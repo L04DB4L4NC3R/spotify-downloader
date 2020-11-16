@@ -44,8 +44,8 @@ jobs:
     - name: Vet Scraper
       run: |
         cd src/scraper
-        go vet -v ./api/*
-        go vet -v ./core/*
+        go vet -v ./api/*.go
+        go vet -v ./core/*.go
         cd ..
         
     - name: Vet Ytber
