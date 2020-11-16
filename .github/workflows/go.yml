@@ -31,9 +31,9 @@ jobs:
 
     - name: Build Scraper
       run: |
-        cd src/scraper
+        cd src/scraper/api
         go build -v .
-        cd ..
+        cd ../..
     
     - name: Build Ytber
       run: |
@@ -44,7 +44,8 @@ jobs:
     - name: Vet Scraper
       run: |
         cd src/scraper
-        go vet -v
+        go vet -v ./api/*
+        go vet -v ./core/*
         cd ..
         
     - name: Vet Ytber
