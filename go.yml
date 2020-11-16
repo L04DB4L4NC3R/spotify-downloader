@@ -1,0 +1,53 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: self0-hosted
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        cd src/scraper
+        go get -v -t -d ./...
+        cd ../ytber
+        go get -v -t -d ./...
+        cd ..
+
+    - name: Build Scraper
+      run: |
+        cd src/scraper
+        go build -v .
+        cd ..
+    
+    - name: Build Ytber
+      run: |
+        cd src/ytber
+        go build -v .
+        cd ..
+
+    - name: Vet Scraper
+      run: |
+        cd src/scraper
+        go vet -v
+        cd ..
+        
+    - name: Vet Ytber
+      run: |
+        cd src/ytber
+        go vet -v
