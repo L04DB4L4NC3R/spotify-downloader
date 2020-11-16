@@ -31,9 +31,9 @@ jobs:
 
     - name: Build Scraper
       run: |
-        cd src/scraper/api
+        cd src/scraper
         go build -v .
-        cd ../..
+        cd ..
     
     - name: Build Ytber
       run: |
