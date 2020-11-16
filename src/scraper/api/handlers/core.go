@@ -13,6 +13,43 @@ type handler struct {
 	service core.Service
 }
 
+func (h *handler) ViewAlbumMeta() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) ViewSongMeta() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) ViewProgressOfAlbumDownload() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) PauseAlbumDownload() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) ResumeAlbumDownload() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+// player
+func (h *handler) PlayPauseSong() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) DownloadSong() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) DownloadAlbum() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) SyncAlbum() http.Handler {
+	panic("not implemented") // TODO: Implement
+}
+
 func (h *handler) Health() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		views.Fill(w, "pong", nil, http.StatusOK)

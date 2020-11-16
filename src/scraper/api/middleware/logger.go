@@ -13,7 +13,9 @@ func Logger(h http.Handler) http.Handler {
 			"url":        r.URL.String(),
 			"headers":    r.Header.Clone().Values,
 			"host":       r.Host,
-			"User_agent": r.UserAgent(),
+			"user_agent": r.UserAgent(),
+			"method":     r.Method,
+			"referrer":   r.Referer(),
 		}).Info("Request Logger")
 		h.ServeHTTP(w, r)
 	})
