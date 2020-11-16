@@ -1,0 +1,10 @@
+package core
+
+const (
+	ERR_META_SCRAPED = iota + 100
+	ERR_META_FED
+	ERR_YT_FETCHED
+	ERR_DWN_QUEUED
+	ERR_DWN_COMPLETE
+	ERR_ACK
+)
