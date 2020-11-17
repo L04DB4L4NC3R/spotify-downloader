@@ -38,16 +38,26 @@ func (h *handler) PlayPauseSong() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) DownloadSong() http.Handler {
-	panic("not implemented") // TODO: Implement
-}
-
 func (h *handler) DownloadAlbum() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
 func (h *handler) SyncAlbum() http.Handler {
 	panic("not implemented") // TODO: Implement
+}
+
+func (h *handler) DownloadSong() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		songMeta, err := h.service.SongDownload(vars["id"], nil)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		// Fireforget
+		// gRPC transport is handled in the service
+		views.Fill(w, "Song Metadata", songMeta, http.StatusAccepted)
+	})
 }
 
 func (h *handler) Health() http.Handler {
