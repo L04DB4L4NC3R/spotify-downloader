@@ -11,4 +11,5 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 	middleware.RegisterMiddlewares(r)
 	r.Handle("/ping", coreHandler.Health())
 	r.Handle("/song/{id}/", coreHandler.DownloadSong())
+	r.Handle("/playlist/{id}/", coreHandler.DownloadPlaylist())
 }

@@ -3,6 +3,8 @@ package core
 import (
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -25,16 +27,16 @@ const (
 type Service interface {
 	// modules
 	// takes albumn link and gives a link of song URLs
-	fetchSongsFromAlbum(url string) (urls []string, err error)
+	fetchSongsFromPlaylist(url string) (urls []string, err error)
 	// takes song URL and gives its metadata
 	scrapeSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
-	queueSongDownloadMessenger(*SongMeta) error
+	queueSongDownloadMessenger(_ *SongMeta, path *string) error
 
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
-	AlbumDownload(url string, path string) error
-	AlbumSync(url string, path string) error
+	PlaylistDownload(id string, path *string) ([]SongMeta, []error)
+	PlaylistSync(url string, path *string) error
 }
 
 type service struct {
@@ -49,8 +51,36 @@ func NewService(r Repository) Service {
 
 // modules
 // takes albumn link and gives a link of song URLs
-func (s *service) fetchSongsFromAlbum(url string) (urls []string, err error) {
-	panic("not implemented") // TODO: Implement
+func (s *service) fetchSongsFromPlaylist(url string) (urls []string, err error) {
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+	}
+	response, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		name    string
+		songUrl string
+		songid  string
+		songids []string
+	)
+	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
+		name, _ = s.Attr("property")
+		if name == "music:song" {
+			songUrl, _ = s.Attr("content")
+			songid = strings.Split(songUrl, SPOT_TRACK_URL)[1]
+			songids = append(songids, songid)
+		}
+	})
+
+	return songids, nil
 }
 
 // takes song URL and gives its metadata
@@ -108,20 +138,50 @@ func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
 }
 
 // Send a gRPC call to the ytber backend for further processing
-func (s *service) queueSongDownloadMessenger(_ *SongMeta) error {
+func (s *service) queueSongDownloadMessenger(_ *SongMeta, path *string) error {
+	// TODO: Send a gRPC call and fire forget.
 	panic("not implemented") // TODO: Implement
 }
 
 // core services
 func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
-	// TODO: Send a gRPC call and fire forget.
-	return s.scrapeSongMeta(id)
+	songmeta, err := s.scrapeSongMeta(id)
+	if err != nil {
+		return songmeta, err
+	}
+	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 
-func (s *service) AlbumDownload(url string, path string) error {
-	panic("not implemented") // TODO: Implement
+func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, []error) {
+	url := SPOT_PLAYLIST_URL + id
+	songs, err := s.fetchSongsFromPlaylist(url)
+	if err != nil {
+		return nil, []error{err}
+	}
+	var (
+		songmeta  *SongMeta
+		wg        sync.WaitGroup
+		errs      []error
+		songmetas []SongMeta
+	)
+	wg.Add(len(songs))
+
+	// TODO: Use a different song download function which accepts songIDs in channels and
+	// propoages results in channels, it then passes the meta to the queue function in channels too
+	for _, songid := range songs {
+		go func() {
+			songmeta, err = s.SongDownload(songid, path)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			songmetas = append(songmetas, *songmeta)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	return songmetas, errs
 }
 
-func (s *service) AlbumSync(url string, path string) error {
+func (s *service) PlaylistSync(url string, path *string) error {
 	panic("not implemented") // TODO: Implement
 }

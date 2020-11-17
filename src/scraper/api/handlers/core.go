@@ -13,7 +13,7 @@ type handler struct {
 	service core.Service
 }
 
-func (h *handler) ViewAlbumMeta() http.Handler {
+func (h *handler) ViewPlaylistMeta() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -21,15 +21,15 @@ func (h *handler) ViewSongMeta() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) ViewProgressOfAlbumDownload() http.Handler {
+func (h *handler) ViewProgressOfPlaylistDownload() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) PauseAlbumDownload() http.Handler {
+func (h *handler) PausePlaylistDownload() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) ResumeAlbumDownload() http.Handler {
+func (h *handler) ResumePlaylistDownload() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -38,12 +38,22 @@ func (h *handler) PlayPauseSong() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) DownloadAlbum() http.Handler {
+func (h *handler) SyncPlaylist() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
 
-func (h *handler) SyncAlbum() http.Handler {
-	panic("not implemented") // TODO: Implement
+func (h *handler) DownloadPlaylist() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistmetas, errs := h.service.PlaylistDownload(vars["id"], nil)
+		if len(errs) != 0 {
+			views.Fill(w, "Some error occurred", errs, http.StatusInternalServerError)
+			return
+		}
+		// Fireforget
+		// gRPC transport is handled in the service
+		views.Fill(w, "Playlist Metadata", playlistmetas, http.StatusAccepted)
+	})
 }
 
 func (h *handler) DownloadSong() http.Handler {

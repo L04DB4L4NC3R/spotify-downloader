@@ -8,13 +8,13 @@ type Handler interface {
 	// downloader
 	Health() http.Handler
 	DownloadSong() http.Handler
-	DownloadAlbum() http.Handler
-	SyncAlbum() http.Handler
-	ViewAlbumMeta() http.Handler
+	DownloadPlaylist() http.Handler
+	SyncPlaylist() http.Handler
+	ViewPlaylistMeta() http.Handler
 	ViewSongMeta() http.Handler
-	ViewProgressOfAlbumDownload() http.Handler
-	PauseAlbumDownload() http.Handler
-	ResumeAlbumDownload() http.Handler
+	ViewProgressOfPlaylistDownload() http.Handler
+	PausePlaylistDownload() http.Handler
+	ResumePlaylistDownload() http.Handler
 
 	// player
 	PlayPauseSong() http.Handler
