@@ -10,8 +10,8 @@ import (
 func Logger(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{
-			"url":        r.URL.String(),
-			"headers":    r.Header.Clone().Values,
+			"url": r.URL.String(),
+			// "headers":    r.Header.Clone().Values("-"),
 			"host":       r.Host,
 			"user_agent": r.UserAgent(),
 			"method":     r.Method,

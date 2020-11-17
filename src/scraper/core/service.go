@@ -140,7 +140,8 @@ func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
 // Send a gRPC call to the ytber backend for further processing
 func (s *service) queueSongDownloadMessenger(_ *SongMeta, path *string) error {
 	// TODO: Send a gRPC call and fire forget.
-	panic("not implemented") // TODO: Implement
+	// panic("not implemented") // TODO: Implement
+	return nil
 }
 
 // core services
@@ -169,14 +170,14 @@ func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, []error
 	// TODO: Use a different song download function which accepts songIDs in channels and
 	// propoages results in channels, it then passes the meta to the queue function in channels too
 	for _, songid := range songs {
-		go func() {
-			songmeta, err = s.SongDownload(songid, path)
+		go func(id string) {
+			songmeta, err = s.SongDownload(id, path)
 			if err != nil {
 				errs = append(errs, err)
 			}
 			songmetas = append(songmetas, *songmeta)
 			wg.Done()
-		}()
+		}(songid)
 	}
 	wg.Wait()
 	return songmetas, errs
