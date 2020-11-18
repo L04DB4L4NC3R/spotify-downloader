@@ -4,7 +4,9 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 ## Features
 
 - [ ] Song download on a URL basis
+- [ ] Entire playlist download
 - [ ] Entire album download
+- [ ] Entire artist download
 - [ ] Pause and resume download ability (through status queues)
 - [ ] Album sync daemon (CRONed or need basis)
 - [ ] Web-UI for bulk process status handling
@@ -16,8 +18,14 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 * Build and run
 ```sh
-make
-./bin/scraper
+make run
+```
+
+* Build and run in hot reload mode
+
+```sh
+go get github.com/cespare/reflex
+make watch -j`nproc`
 ```
 
 ## Roadmap
