@@ -16,8 +16,9 @@ import (
 )
 
 func redisConnect() (*redis.Client, error) {
+	addr := os.Getenv("REDIS_ADDR")
 	rdc := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
+		Addr:     addr,
 		Password: os.Getenv("REDIS_PASS"),
 		DB:       0,
 	})
@@ -26,6 +27,7 @@ func redisConnect() (*redis.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Connected to Redis @ " + addr)
 	return rdc, nil
 }
 
@@ -64,7 +66,7 @@ func main() {
 		log.Fatal(err)
 	}
 	// create redis error handling channel
-	cerr := make(chan error)
+	cerr := make(chan core.AsyncErrors)
 	redisRepo := core.NewRedisRepo(rdc, cerr)
 	// create core service using redis repo
 	coreSvc := core.NewService(redisRepo)

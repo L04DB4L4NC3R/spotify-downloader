@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"errors"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -31,18 +30,16 @@ func (r *repo) SaveMeta(songmeta *SongMeta, status string) {
 	statuskey := "song:status:" + songmeta.SongID
 	songmetabytes, _ := json.Marshal(songmeta)
 	if err = r.Rdc.Set(ctx, metakey, string(songmetabytes), 0).Err(); err != nil {
-		errobj := NewRepoError("Error saving meta", err, "REDIS", songmeta)
+		errobj := NewRepoError("Error saving meta", err, SRC_REDIS, metakey)
 		r.Cerr <- errobj
 		return
 	}
 
 	if err = r.Rdc.Set(ctx, statuskey, status, 0).Err(); err != nil {
-		errobj := NewRepoError("Error saving meta", err, "REDIS", songmeta)
+		errobj := NewRepoError("Error saving meta", err, SRC_REDIS, metakey)
 		r.Cerr <- errobj
 		return
 	}
-	errobj := NewRepoError("Error saving meta", errors.New("HELLO WORLD"), "REDIS", songmeta)
-	r.Cerr <- errobj
 	return
 }
 
@@ -67,7 +64,8 @@ func (r *repo) UpdateStatus(resource string, id string, status string) {
 	)
 	statuskey := resource + ":status:" + id
 	if err = r.Rdc.Set(ctx, statuskey, status, 0).Err(); err != nil {
-		r.Cerr <- err
+		errobj := NewRepoError("Error updating status", err, SRC_REDIS, statuskey)
+		r.Cerr <- errobj
 		return
 	}
 	return
