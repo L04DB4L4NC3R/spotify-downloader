@@ -2,15 +2,8 @@ package core
 
 import (
 	"encoding/json"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/PuerkitoBio/goquery"
 
 	"github.com/rapito/go-spotify/spotify"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -31,7 +24,7 @@ const (
 type Service interface {
 	// modules
 	// takes albumn link and gives a link of song URLs
-	fetchSongsFromPlaylist(url string) (urls []string, err error)
+	fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err error)
 	// takes song URL and gives its metadata
 	scrapeSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
@@ -39,7 +32,7 @@ type Service interface {
 
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
-	PlaylistDownload(id string, path *string) ([]SongMeta, []error)
+	PlaylistDownload(id string, path *string) ([]SongMeta, error)
 	PlaylistSync(url string, path *string) error
 }
 
@@ -57,36 +50,37 @@ func NewService(r Repository, s *spotify.Spotify) Service {
 
 // modules
 // takes albumn link and gives a link of song URLs
-func (s *service) fetchSongsFromPlaylist(url string) (urls []string, err error) {
-	client := &http.Client{
-		Timeout: 15 * time.Second,
+func (s *service) fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err error) {
+	// max songs that can be returned in a playlist is 100
+	// TODO: Create goroutines for paginated limit and skip returns
+	result, errs := s.spotify.Get("playlists/%s/tracks?limit=%s&offset=%s", nil, id, "100", "0")
+	if len(errs) != 0 {
+		return nil, errs[0]
 	}
-	response, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	doc, err := goquery.NewDocumentFromReader(response.Body)
+
+	obj := SpotifyPlaylistUnmarshalStruct{}
+	err = json.Unmarshal(result, &obj)
 	if err != nil {
 		return nil, err
 	}
 
-	var (
-		name    string
-		songUrl string
-		songid  string
-		songids []string
-	)
-	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
-		name, _ = s.Attr("property")
-		if name == "music:song" {
-			songUrl, _ = s.Attr("content")
-			songid = strings.Split(songUrl, SPOT_TRACK_URL)[1]
-			songids = append(songids, songid)
-		}
-	})
+	for _, val := range obj.Items {
+		songmetas = append(songmetas, SongMeta{
 
-	return songids, nil
+			Title:      val.Track.Name,
+			Url:        SPOT_TRACK_URL + val.Track.ID,
+			ArtistLink: SPOT_ARTIST_URL + val.Track.Album.Artists[0].ID,
+			ArtistName: val.Track.Album.Artists[0].Name,
+			AlbumName:  val.Track.Album.Name,
+			AlbumUrl:   SPOT_ALBUM_URL + val.Track.Album.ID,
+			Date:       val.Track.Album.Date,
+			Duration:   &val.Track.DurationMs,
+			Track:      &val.Track.Track,
+			SongID:     val.Track.ID,
+			Thumbnail:  val.Track.Album.Images[0].Url,
+		})
+	}
+	return songmetas, nil
 }
 
 // takes song URL and gives its metadata
@@ -99,10 +93,8 @@ func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
 
 	err := json.Unmarshal(result, &obj)
 	if err != nil {
-		log.Error("EROEKORJNJOELNAKNFSKKSAFNKNSFKLJ")
 		return nil, err
 	}
-	log.Info(obj)
 
 	songmeta := &SongMeta{
 
@@ -140,35 +132,10 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 
-func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, []error) {
-	url := SPOT_PLAYLIST_URL + id
-	songs, err := s.fetchSongsFromPlaylist(url)
-	if err != nil {
-		return nil, []error{err}
-	}
-	var (
-		songmeta  *SongMeta
-		wg        sync.WaitGroup
-		errs      []error
-		songmetas []SongMeta
-	)
-	wg.Add(len(songs))
-
-	// TODO: Use a different song download function which accepts songIDs in channels and
-	// propoages results in channels, it then passes the meta to the queue function in channels too
-	for _, songid := range songs {
-		go func(songid string) {
-			songmeta, err = s.SongDownload(songid, path)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			songmetas = append(songmetas, *songmeta)
-			wg.Done()
-		}(songid)
-	}
-	wg.Wait()
+func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, error) {
+	songmetas, err := s.fetchSongsFromPlaylist(id)
 	go s.redis.SaveMetaArray("playlist", id, songmetas, STATUS_META_FED)
-	return songmetas, errs
+	return songmetas, err
 }
 
 func (s *service) PlaylistSync(url string, path *string) error {

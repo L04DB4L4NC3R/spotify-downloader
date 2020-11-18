@@ -17,10 +17,19 @@ type SongMeta struct {
 	Thumbnail  string `json:"thumbnail"`
 }
 
+type SpotifyPlaylistUnmarshalStruct struct {
+	Items []ItemSpotifyHelper `json:"items"`
+}
+
+type ItemSpotifyHelper struct {
+	Track SpotifyUnmarshalStruct `json:"track"`
+}
+
 type SpotifyUnmarshalStruct struct {
 	Name       string             `json:"name"`
 	DurationMs int                `json:"duration_ms"`
 	Track      int                `json:"track_number"`
+	ID         string             `json:"id"`
 	Album      AlbumSpotifyHelper `json:"album"`
 }
 

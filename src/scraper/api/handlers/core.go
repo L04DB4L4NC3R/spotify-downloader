@@ -45,9 +45,9 @@ func (h *handler) SyncPlaylist() http.Handler {
 func (h *handler) DownloadPlaylist() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, errs := h.service.PlaylistDownload(vars["id"], nil)
-		if len(errs) != 0 {
-			views.Fill(w, "Some error occurred", errs, http.StatusInternalServerError)
+		playlistmetas, err := h.service.PlaylistDownload(vars["id"], nil)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
 		}
 		// Fireforget
