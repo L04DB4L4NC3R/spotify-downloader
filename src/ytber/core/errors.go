@@ -1,0 +1,8 @@
+package core
+
+const (
+	ERR_YT_FETCHED
+	ERR_DWN_QUEUED
+	ERR_DWN_COMPLETE
+	ERR_ACK
+)
