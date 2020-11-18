@@ -9,31 +9,12 @@ import (
 	"time"
 
 	handler "github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/handlers"
-	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/middleware"
 	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/core"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
-
-func cleanup(rdc *redis.Client, cerr chan core.AsyncErrors) {
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func(rdc *redis.Client, cerr chan core.AsyncErrors) {
-		select {
-		case <-c:
-			log.Infoln("Graceful Shutdown Initiated")
-			if err := rdc.Close(); err != nil {
-				log.Error(err)
-			}
-			log.Infoln("Closed Redis Connection")
-			close(cerr)
-			log.Infoln("Closed Global Async Error Channel")
-			os.Exit(0)
-		}
-	}(rdc, cerr)
-}
 
 func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
@@ -51,6 +32,8 @@ func redisConnect() (*redis.Client, error) {
 	return rdc, nil
 }
 
+// Global channel pool is being run as a goroutine to listen for events throughout the application
+// Additional channels can be added for seperation of concerns when it comes to type of events
 func globalChannelPool(cerr chan core.AsyncErrors) {
 	select {
 	case errobj := <-cerr:
@@ -70,14 +53,12 @@ func init() {
 	}
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetOutput(os.Stdout)
-	log.SetLevel(log.InfoLevel)
 
-}
-
-func registerHandlers(r *mux.Router, svc core.Service) {
-	coreHandler := handler.NewHandler(r, svc)
-	middleware.RegisterMiddlewares(r)
-	r.Handle("/ping", coreHandler.Health())
+	if os.Getenv("ENV") == "DEV" {
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(log.WarnLevel)
+	}
 }
 
 func main() {
@@ -119,4 +100,22 @@ func main() {
 
 	// start the HTTP server
 	log.Fatal(srv.ListenAndServe())
+}
+
+func cleanup(rdc *redis.Client, cerr chan core.AsyncErrors) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func(rdc *redis.Client, cerr chan core.AsyncErrors) {
+		select {
+		case <-c:
+			log.Infoln("Graceful Shutdown Initiated")
+			if err := rdc.Close(); err != nil {
+				log.Error(err)
+			}
+			log.Infoln("Closed Redis Connection")
+			close(cerr)
+			log.Infoln("Closed Global Async Error Channel")
+			os.Exit(0)
+		}
+	}(rdc, cerr)
 }
