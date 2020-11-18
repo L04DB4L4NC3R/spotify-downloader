@@ -81,3 +81,25 @@ func (r *repo) GetStatus(resource string, id string) (string, error) {
 	}
 	return val, nil
 }
+
+func (r *repo) SaveMetaArray(resource string, id string, songmeta []SongMeta, status string) {
+	var (
+		ctx context.Context = context.Background()
+		err error
+	)
+	metakey := resource + ":meta:" + id
+	statuskey := resource + ":status:" + id
+	songmetabytes, _ := json.Marshal(songmeta)
+	if err = r.Rdc.Set(ctx, metakey, string(songmetabytes), 0).Err(); err != nil {
+		errobj := NewRepoError("Error saving meta", err, SRC_REDIS, metakey)
+		r.Cerr <- errobj
+		return
+	}
+
+	if err = r.Rdc.Set(ctx, statuskey, status, 0).Err(); err != nil {
+		errobj := NewRepoError("Error saving meta", err, SRC_REDIS, metakey)
+		r.Cerr <- errobj
+		return
+	}
+	return
+}

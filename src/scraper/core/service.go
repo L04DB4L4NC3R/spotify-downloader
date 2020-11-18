@@ -171,8 +171,8 @@ func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, []error
 	// TODO: Use a different song download function which accepts songIDs in channels and
 	// propoages results in channels, it then passes the meta to the queue function in channels too
 	for _, songid := range songs {
-		go func(id string) {
-			songmeta, err = s.SongDownload(id, path)
+		go func(songid string) {
+			songmeta, err = s.SongDownload(songid, path)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -181,6 +181,7 @@ func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, []error
 		}(songid)
 	}
 	wg.Wait()
+	go s.redis.SaveMetaArray("playlist", id, songmetas, STATUS_META_FED)
 	return songmetas, errs
 }
 
