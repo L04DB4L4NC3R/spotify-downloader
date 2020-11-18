@@ -13,6 +13,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rapito/go-spotify/spotify"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,6 +31,16 @@ func redisConnect() (*redis.Client, error) {
 	}
 	log.Info("Connected to Redis @ " + addr)
 	return rdc, nil
+}
+
+func spotifyApiConnect() (*spotify.Spotify, error) {
+	client := spotify.New(os.Getenv("SPOTIFY_CLIENT_ID"), os.Getenv("SPOTIFY_CLIENT_SECRET"))
+	_, err := client.Authorize()
+	if err != nil {
+		return nil, err[0]
+	}
+	log.Info("Connected to Spotify")
+	return &client, nil
 }
 
 // Global channel pool is being run as a goroutine to listen for events throughout the application
@@ -71,7 +82,12 @@ func main() {
 	cerr := make(chan core.AsyncErrors)
 	redisRepo := core.NewRedisRepo(rdc, cerr)
 	// create core service using redis repo
-	coreSvc := core.NewService(redisRepo)
+	spotifyClient, err := spotifyApiConnect()
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+	coreSvc := core.NewService(redisRepo, spotifyClient)
 
 	// create a router and register handlers
 	r := mux.NewRouter()

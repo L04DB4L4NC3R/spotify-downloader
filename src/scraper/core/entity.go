@@ -1,18 +1,41 @@
 package core
 
 type SongMeta struct {
-	Title      string  `json:"title"`
-	ArtistLink string  `json:"artist_link"`
-	ArtistName string  `json:"artist_name"`
-	AlbumName  string  `json:"album_name"`
-	AlbumUrl   string  `json:"album_url"`
-	Date       string  `json:"date"`
-	Duration   *uint16 `json:"duration"`
-	Bitrate    *uint8  `json:"bitrate"`
-	Track      *uint8  `json:"track"`
-	Genre      string  `json:"genre"`
-	Url        string  `json:"url"`
-	YtUrl      string  `json:"yt_url"`
-	SongID     string  `json:"song_id"`
-	Thumbnail  string  `json:"thumbnail"`
+	Title      string `json:"title"`
+	ArtistLink string `json:"artist_link"`
+	ArtistName string `json:"artist_name"`
+	AlbumName  string `json:"album_name"`
+	AlbumUrl   string `json:"album_url"`
+	Date       string `json:"date"`
+	Duration   *int   `json:"duration"`
+	Bitrate    *int   `json:"bitrate"`
+	Track      *int   `json:"track"`
+	Genre      string `json:"genre"`
+	Url        string `json:"url"`
+	YtUrl      string `json:"yt_url"`
+	SongID     string `json:"song_id"`
+	Thumbnail  string `json:"thumbnail"`
+}
+
+type SpotifyUnmarshalStruct struct {
+	Name       string             `json:"name"`
+	DurationMs int                `json:"duration_ms"`
+	Track      int                `json:"track_number"`
+	Album      AlbumSpotifyHelper `json:"album"`
+}
+
+type AlbumSpotifyHelper struct {
+	ID          string                `json"id"`
+	Artists     []ArtistSpotifyHelper `json:"artists"`
+	Images      []ImageSpotifyHelper  `json:"images"`
+	Name        string                `json:"name"`
+	Date        string                `json:"release_date"`
+	TotalTracks int                   `json:"total_tracks"`
+}
+type ArtistSpotifyHelper struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+type ImageSpotifyHelper struct {
+	Url string `json:"url"`
 }

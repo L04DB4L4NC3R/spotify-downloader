@@ -1,13 +1,16 @@
 package core
 
 import (
+	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/rapito/go-spotify/spotify"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -20,6 +23,8 @@ const (
 
 const (
 	SPOT_TRACK_URL    = "https://open.spotify.com/track/"
+	SPOT_ALBUM_URL    = "https://open.spotify.com/album/"
+	SPOT_ARTIST_URL   = "https://open.spotify.com/artist/"
 	SPOT_PLAYLIST_URL = "https://open.spotify.com/playlist/"
 )
 
@@ -39,12 +44,14 @@ type Service interface {
 }
 
 type service struct {
-	redis Repository
+	redis   Repository
+	spotify *spotify.Spotify
 }
 
-func NewService(r Repository) Service {
+func NewService(r Repository, s *spotify.Spotify) Service {
 	return &service{
-		redis: r,
+		redis:   r,
+		spotify: s,
 	}
 }
 
@@ -84,55 +91,34 @@ func (s *service) fetchSongsFromPlaylist(url string) (urls []string, err error) 
 
 // takes song URL and gives its metadata
 func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
-	url := SPOT_TRACK_URL + id
-	client := &http.Client{
-		Timeout: 15 * time.Second,
+	result, errs := s.spotify.Get("tracks/%s", nil, id)
+	if len(errs) != 0 {
+		return nil, errs[0]
 	}
-	response, err := client.Get(url)
+	obj := SpotifyUnmarshalStruct{}
+
+	err := json.Unmarshal(result, &obj)
 	if err != nil {
+		log.Error("EROEKORJNJOELNAKNFSKKSAFNKNSFKLJ")
 		return nil, err
 	}
-	defer response.Body.Close()
-	doc, err := goquery.NewDocumentFromReader(response.Body)
-	if err != nil {
-		return nil, err
-	}
+	log.Info(obj)
 
 	songmeta := &SongMeta{
-		Url:    url,
-		SongID: id,
+
+		Title:      obj.Name,
+		Url:        SPOT_TRACK_URL + id,
+		ArtistLink: SPOT_ARTIST_URL + obj.Album.Artists[0].ID,
+		ArtistName: obj.Album.Artists[0].Name,
+		AlbumName:  obj.Album.Name,
+		AlbumUrl:   SPOT_ALBUM_URL + obj.Album.ID,
+		Date:       obj.Album.Date,
+		Duration:   &obj.DurationMs,
+		Track:      &obj.Track,
+		SongID:     id,
+		Thumbnail:  obj.Album.Images[0].Url,
 	}
 
-	var name string
-	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
-		name, _ = s.Attr("property")
-		if name == "og:title" {
-			songmeta.Title, _ = s.Attr("content")
-		} else if name == "music:musician" {
-			songmeta.ArtistLink, _ = s.Attr("content")
-		} else if name == "og:image" {
-			songmeta.Thumbnail, _ = s.Attr("content")
-		} else if name == "music:duration" {
-			strduration, _ := s.Attr("content")
-			duration, _ := strconv.ParseUint(strduration, 10, 16)
-			typecastedDuration := uint16(duration)
-			songmeta.Duration = &typecastedDuration
-		} else if name == "music:album" {
-			songmeta.AlbumUrl, _ = s.Attr("content")
-		} else if name == "music:album:track" {
-			strtrack, _ := s.Attr("content")
-			track, _ := strconv.ParseUint(strtrack, 10, 8)
-			typecastedTrack := uint8(track)
-			songmeta.Track = &typecastedTrack
-		} else if name == "music:release_date" {
-			songmeta.Date, _ = s.Attr("content")
-		} else if name == "twitter:audio:artist_name" {
-			songmeta.ArtistName, _ = s.Attr("content")
-		}
-
-	})
-
-	songmeta.AlbumName = doc.Find("div.media-bd a").Last().Text()
 	return songmeta, err
 }
 

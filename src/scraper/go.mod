@@ -4,9 +4,15 @@ go 1.15
 
 require (
 	github.com/PuerkitoBio/goquery v1.6.0
+	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/go-redis/redis/v8 v8.3.4
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.3.0 // indirect
+	github.com/parnurzeal/gorequest v0.2.16 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rapito/go-spotify v0.0.0-20171031112644-2944f751da9c
 	github.com/sirupsen/logrus v1.7.0
+	github.com/spotify-api/spotify-api.go v0.0.0-20201103050858-de20f7a4fc7a
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
+	moul.io/http2curl v1.0.0 // indirect
 )
