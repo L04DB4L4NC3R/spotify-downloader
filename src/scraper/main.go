@@ -58,7 +58,7 @@ func globalChannelPool(cerr chan core.AsyncErrors) {
 }
 
 func init() {
-	err := godotenv.Load("./.env")
+	err := godotenv.Load("./config/scraper.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}

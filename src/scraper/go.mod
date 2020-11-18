@@ -7,7 +7,7 @@ require (
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/go-redis/redis/v8 v8.3.4
 	github.com/gorilla/mux v1.8.0
-	github.com/joho/godotenv v1.3.0 // indirect
+	github.com/joho/godotenv v1.3.0
 	github.com/parnurzeal/gorequest v0.2.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rapito/go-spotify v0.0.0-20171031112644-2944f751da9c

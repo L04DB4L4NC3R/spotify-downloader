@@ -1,5 +1,5 @@
 # spotify-downloader
-Download songs and albums, or sync in to your favourite tunes
+Download songs, playlists and albums, or sync in to your favourite tunes
 
 ## Features
 
@@ -8,7 +8,7 @@ Download songs and albums, or sync in to your favourite tunes
 - [ ] Pause and resume download ability (through status queues)
 - [ ] Album sync daemon (CRONed or need basis)
 - [ ] Web-UI for bulk process status handling
-- [ ] gRPC streaming music player with Wasm
+- [ ] Streaming music playback
 
 ## Roadmap
 
