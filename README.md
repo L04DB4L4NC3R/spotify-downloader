@@ -1,14 +1,32 @@
 # spotify-downloader
-Download songs and albums, or sync in to your favourite tunes
+Download songs, playlists and albums, or sync in to your favourite tunes
 
 ## Features
 
 - [ ] Song download on a URL basis
+- [ ] Entire playlist download
 - [ ] Entire album download
+- [ ] Entire artist download
 - [ ] Pause and resume download ability (through status queues)
 - [ ] Album sync daemon (CRONed or need basis)
 - [ ] Web-UI for bulk process status handling
-- [ ] gRPC streaming music player with Wasm
+- [ ] Streaming music playback
+
+## How to run
+
+* Configure secrets: Copy `config/scraper.env.sample` to `config/scraper.env` and fill the secrets
+
+* Build and run
+```sh
+make run
+```
+
+* Build and run in hot reload mode
+
+```sh
+go get github.com/cespare/reflex
+make watch -j`nproc`
+```
 
 ## Roadmap
 
