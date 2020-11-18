@@ -10,6 +10,16 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 - [ ] Web-UI for bulk process status handling
 - [ ] Streaming music playback
 
+## How to run
+
+* Configure secrets: Copy `config/scraper.env.sample` to `config/scraper.env` and fill the secrets
+
+* Build and run
+```sh
+make
+./bin/scraper
+```
+
 ## Roadmap
 
 * Single song download
