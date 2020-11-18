@@ -11,12 +11,11 @@ import (
 )
 
 const (
-	META_SCRAPED = iota + 100
-	META_FED
-	YT_FETCHED
-	DWN_QUEUED
-	DWN_COMPLETE
-	ACK
+	STATUS_META_FED     = "FED"
+	STATUS_YT_FETCHED   = "YT_FETCHED"
+	STATUS_DWN_QUEUED   = "DWN_QUEUED"
+	STATUS_DWN_COMPLETE = "DWN_COMPLETE"
+	STATUS_ACK          = "ACK"
 )
 
 const (
@@ -40,12 +39,12 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	redis Repository
 }
 
 func NewService(r Repository) Service {
 	return &service{
-		repo: r,
+		redis: r,
 	}
 }
 
@@ -150,6 +149,8 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 	if err != nil {
 		return songmeta, err
 	}
+	// if error occurs while saving to redis, it is handled by the global async error handler
+	go s.redis.SaveMeta(songmeta, STATUS_META_FED)
 	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 

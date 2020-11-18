@@ -1,10 +1,43 @@
 package core
 
+type sources string
+
 const (
-	ERR_META_SCRAPED = iota + 100
-	ERR_META_FED
-	ERR_YT_FETCHED
-	ERR_DWN_QUEUED
-	ERR_DWN_COMPLETE
-	ERR_ACK
+	SRC_REDIS sources = "REDIS"
 )
+
+type AsyncErrors interface {
+	Msg() string
+	Err() error
+	Src() sources
+	Data() interface{}
+}
+
+type repoErrors struct {
+	msg  string
+	err  error
+	src  sources
+	data interface{}
+}
+
+func NewRepoError(msg string, err error, src sources, data interface{}) AsyncErrors {
+	return &repoErrors{
+		msg:  msg,
+		err:  err,
+		src:  src,
+		data: data,
+	}
+}
+
+func (ae *repoErrors) Msg() string {
+	return ae.msg
+}
+func (ae *repoErrors) Err() error {
+	return ae.err
+}
+func (ae *repoErrors) Src() sources {
+	return ae.src
+}
+func (ae *repoErrors) Data() interface{} {
+	return ae.data
+}
