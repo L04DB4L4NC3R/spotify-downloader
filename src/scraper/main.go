@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	handler "github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/handlers"
@@ -14,6 +16,24 @@ import (
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
+
+func cleanup(rdc *redis.Client, cerr chan core.AsyncErrors) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func(rdc *redis.Client, cerr chan core.AsyncErrors) {
+		select {
+		case <-c:
+			log.Infoln("Graceful Shutdown Initiated")
+			if err := rdc.Close(); err != nil {
+				log.Error(err)
+			}
+			log.Infoln("Closed Redis Connection")
+			close(cerr)
+			log.Infoln("Closed Global Async Error Channel")
+			os.Exit(0)
+		}
+	}(rdc, cerr)
+}
 
 func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
@@ -51,6 +71,7 @@ func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
+
 }
 
 func registerHandlers(r *mux.Router, svc core.Service) {
@@ -93,5 +114,9 @@ func main() {
 
 	// start global channel pool
 	go globalChannelPool(cerr)
+	// graceful shutdown
+	cleanup(rdc, cerr)
+
+	// start the HTTP server
 	log.Fatal(srv.ListenAndServe())
 }
