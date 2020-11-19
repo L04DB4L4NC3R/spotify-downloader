@@ -16,6 +16,12 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 * Configure secrets: Copy `config/scraper.env.sample` to `config/scraper.env` and fill the secrets
 
+* Generate protocol buffer code (requires protoc & gRPC installation)
+
+```sh
+make build-proto
+```
+
 * Build and run
 ```sh
 make run
