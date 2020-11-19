@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package playlist;
 
-import "rpc/song.proto";
+import "proto/song.proto";
 
-option go_package = "rpc;pb";
+option go_package = "proto;pb";
 
 message PlaylistMetaRequest {
 	repeated song.SongMetaRequest songs = 1;

@@ -13,6 +13,6 @@ watch:
 
 .PHONY: build-proto
 build-proto:
-	cd src/scraper/ && protoc --go_out=. --go_opt=paths=source_relative \
+	cd src/scraper/rpc && protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-    rpc/main.proto
+    proto/main.proto

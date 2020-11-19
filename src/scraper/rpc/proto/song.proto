@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package song;
 
-option go_package = "rpc;pb";
+option go_package = "proto;pb";
 
 message SongMetaRequest {
 	string url = 1;

@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package main;
 
-import "rpc/song.proto";
-import "rpc/playlist.proto";
+import "proto/song.proto";
+import "proto/playlist.proto";
 
 option go_package = "rpc;pb";
 
