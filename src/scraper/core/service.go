@@ -2,6 +2,8 @@ package core
 
 import (
 	"encoding/json"
+	"strconv"
+	"sync"
 
 	"github.com/rapito/go-spotify/spotify"
 )
@@ -19,6 +21,11 @@ const (
 	SPOT_ALBUM_URL    = "https://open.spotify.com/album/"
 	SPOT_ARTIST_URL   = "https://open.spotify.com/artist/"
 	SPOT_PLAYLIST_URL = "https://open.spotify.com/playlist/"
+)
+
+const (
+	PLAYLIST_BATCH_LIMIT = 1000
+	PLAYLIST_BATCH_SIZE  = 100 // cannot be greater than this since spotify api playlist track limit is 100
 )
 
 type Service interface {
@@ -51,34 +58,57 @@ func NewService(r Repository, s *spotify.Spotify) Service {
 // modules
 // takes albumn link and gives a link of song URLs
 func (s *service) fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err error) {
-	// max songs that can be returned in a playlist is 100
-	// TODO: Create goroutines for paginated limit and skip returns
-	result, errs := s.spotify.Get("playlists/%s/tracks?limit=%s&offset=%s", nil, id, "100", "0")
+
+	var (
+		wg   sync.WaitGroup
+		errs []error
+	)
+
+	// if 1000 is the limit and spotify api limit is 100 then call 10 goroutines
+	wg.Add(PLAYLIST_BATCH_LIMIT/PLAYLIST_BATCH_SIZE + 1)
+	for offset := 0; offset <= PLAYLIST_BATCH_LIMIT; offset += 100 {
+
+		// max songs that can be returned in a playlist is 100
+		go func(offset string) {
+
+			result, errarr := s.spotify.Get("playlists/%s/tracks?limit=%s&offset=%s", nil, id, "100", offset)
+			if len(errarr) != 0 {
+				errs = append(errs, errarr...)
+				wg.Done()
+				return
+			}
+
+			obj := SpotifyPlaylistUnmarshalStruct{}
+			err = json.Unmarshal(result, &obj)
+			if err != nil {
+				errs = append(errs, err)
+				wg.Done()
+				return
+			}
+
+			for _, val := range obj.Items {
+				songmetas = append(songmetas, SongMeta{
+
+					Title:      val.Track.Name,
+					Url:        SPOT_TRACK_URL + val.Track.ID,
+					ArtistLink: SPOT_ARTIST_URL + val.Track.Album.Artists[0].ID,
+					ArtistName: val.Track.Album.Artists[0].Name,
+					AlbumName:  val.Track.Album.Name,
+					AlbumUrl:   SPOT_ALBUM_URL + val.Track.Album.ID,
+					Date:       val.Track.Album.Date,
+					Duration:   &val.Track.DurationMs,
+					Track:      &val.Track.Track,
+					SongID:     val.Track.ID,
+					Thumbnail:  val.Track.Album.Images[0].Url,
+				})
+			}
+			wg.Done()
+		}(strconv.Itoa(offset))
+	}
+
+	wg.Wait()
 	if len(errs) != 0 {
 		return nil, errs[0]
-	}
-
-	obj := SpotifyPlaylistUnmarshalStruct{}
-	err = json.Unmarshal(result, &obj)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, val := range obj.Items {
-		songmetas = append(songmetas, SongMeta{
-
-			Title:      val.Track.Name,
-			Url:        SPOT_TRACK_URL + val.Track.ID,
-			ArtistLink: SPOT_ARTIST_URL + val.Track.Album.Artists[0].ID,
-			ArtistName: val.Track.Album.Artists[0].Name,
-			AlbumName:  val.Track.Album.Name,
-			AlbumUrl:   SPOT_ALBUM_URL + val.Track.Album.ID,
-			Date:       val.Track.Album.Date,
-			Duration:   &val.Track.DurationMs,
-			Track:      &val.Track.Track,
-			SongID:     val.Track.ID,
-			Thumbnail:  val.Track.Album.Images[0].Url,
-		})
 	}
 	return songmetas, nil
 }
