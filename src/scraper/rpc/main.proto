@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package main;
+
+import "rpc/song.proto";
+import "rpc/playlist.proto";
+
+option go_package = "rpc;pb";
+
+service FeedMeta {
+	rpc SongDownload(song.SongMetaRequest) returns (song.SongMetaResponse) {}
+	rpc PlaylistDownload(playlist.PlaylistMetaRequest) returns (playlist.PlaylistMetaResponse) {}
+}

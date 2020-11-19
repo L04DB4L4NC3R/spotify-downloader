@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package song;
+
+option go_package = "rpc;pb";
+
+message SongMetaRequest {
+	string url = 1;
+	string song_id = 2;
+	string thumbnail = 3;
+	string genre = 4;
+	string date = 5;
+	string album_url = 6;
+	string album_name = 7;
+	string artist_link = 8;
+	string artist_name = 9;
+	uint32 duration = 10;
+	uint32 bitrate = 11;
+	uint32 track = 12;
+}
+
+message SongMetaResponse {
+	string yt_url = 1;
+	string err_msg = 2;
+	bool success = 3;
+}
