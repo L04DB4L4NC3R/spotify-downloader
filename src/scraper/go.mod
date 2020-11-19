@@ -12,5 +12,7 @@ require (
 	github.com/rapito/go-spotify v0.0.0-20171031112644-2944f751da9c
 	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
+	google.golang.org/grpc v1.33.2
+	google.golang.org/protobuf v1.25.0
 	moul.io/http2curl v1.0.0 // indirect
 )
