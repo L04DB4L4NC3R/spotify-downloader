@@ -4,7 +4,7 @@ package playlist;
 
 import "proto/song.proto";
 
-option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto;pb";
+option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto;pb";
 
 message PlaylistMetaRequest {
 	repeated song.SongMetaRequest songs = 1;

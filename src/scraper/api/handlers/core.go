@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/api/views"
-	"github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/core"
+	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/views"
+	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/core"
 	"github.com/gorilla/mux"
 )
 

@@ -8,14 +8,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/core"
-	pb "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto"
+	handler "github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/handlers"
+	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/core"
+	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/rapito/go-spotify/spotify"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 func redisConnect() (*redis.Client, error) {
@@ -30,7 +30,9 @@ func redisConnect() (*redis.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Connected to Redis @ " + addr)
+	log.WithFields(log.Fields{
+		"redis_server": addr,
+	}).Info("Connected to Redis")
 	return rdc, nil
 }
 
@@ -79,6 +81,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rdc.Close()
 	// create redis error handling channel
 	cerr := make(chan core.AsyncErrors)
 	redisRepo := core.NewRedisRepo(rdc, cerr)
@@ -90,14 +93,13 @@ func main() {
 	}
 
 	// create a gRPC client for ytber
-	conn, err := grpc.Dial(os.Getenv("YTBER_GRPC_SERVER_ADDR"))
+	conn, feedMetaClient, err := pb.Register()
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
-	client := pb.NewFeedMetaClient(conn)
-	log.Info(client)
-	coreSvc := core.NewService(redisRepo, spotifyClient)
+	defer conn.Close()
+	coreSvc := core.NewService(redisRepo, spotifyClient, feedMetaClient)
 
 	// create a router and register handlers
 	r := mux.NewRouter()
@@ -114,7 +116,7 @@ func main() {
 	}
 
 	log.WithFields(log.Fields{
-		"addr":          addr,
+		"web_server":    addr,
 		"write_timeout": rwTimeout,
 		"read_timeout":  rwTimeout,
 	}).Info("Listening....")
@@ -122,26 +124,22 @@ func main() {
 	// start global channel pool
 	go globalChannelPool(cerr)
 	// graceful shutdown
-	cleanup(rdc, cerr)
+	cleanup(cerr)
 
 	// start the HTTP server
 	log.Fatal(srv.ListenAndServe())
 }
 
-func cleanup(rdc *redis.Client, cerr chan core.AsyncErrors) {
+func cleanup(cerr chan core.AsyncErrors) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func(rdc *redis.Client, cerr chan core.AsyncErrors) {
+	go func() {
 		select {
 		case <-c:
 			log.Infoln("Graceful Shutdown Initiated")
-			if err := rdc.Close(); err != nil {
-				log.Error(err)
-			}
-			log.Infoln("Closed Redis Connection")
 			close(cerr)
 			log.Infoln("Closed Global Async Error Channel")
 			os.Exit(0)
 		}
-	}(rdc, cerr)
+	}()
 }

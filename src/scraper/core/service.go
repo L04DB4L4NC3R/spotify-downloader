@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"sync"
 
+	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto"
 	"github.com/rapito/go-spotify/spotify"
 )
 
@@ -44,14 +45,16 @@ type Service interface {
 }
 
 type service struct {
-	redis   Repository
-	spotify *spotify.Spotify
+	redis               Repository
+	spotify             *spotify.Spotify
+	feedMetaTransporter *pb.FeedMetaClient
 }
 
-func NewService(r Repository, s *spotify.Spotify) Service {
+func NewService(r Repository, s *spotify.Spotify, feedMetaTransporter *pb.FeedMetaClient) Service {
 	return &service{
-		redis:   r,
-		spotify: s,
+		redis:               r,
+		spotify:             s,
+		feedMetaTransporter: feedMetaTransporter,
 	}
 }
 
