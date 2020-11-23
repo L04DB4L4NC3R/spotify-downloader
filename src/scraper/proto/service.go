@@ -11,8 +11,9 @@ type service struct {
 
 type Service interface {
 	SendSongMeta(*songMetaStruct) (ytlink string, err error)
-	SendPlaylistMeta([]songMetaStruct) (ytlinks []string, err []error)
-	NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32) *songMetaStruct
+	SendPlaylistMeta([]songMetaStruct) (ytlinks []string, err error)
+	NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32, title string) *songMetaStruct
+	NewPlaylistTransportStruct() []songMetaStruct
 }
 
 func NewService(mtc FeedMetaClient) Service {
@@ -21,7 +22,7 @@ func NewService(mtc FeedMetaClient) Service {
 	}
 }
 
-func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32) *songMetaStruct {
+func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32, title string) *songMetaStruct {
 	return &songMetaStruct{
 		Url:        url,
 		SongId:     songId,
@@ -34,7 +35,12 @@ func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, da
 		ArtistName: artistName,
 		Duration:   duration,
 		Track:      track,
+		Title:      title,
 	}
+}
+
+func (svc *service) NewPlaylistTransportStruct() []songMetaStruct {
+	return []songMetaStruct{}
 }
 func (svc *service) SendSongMeta(meta *songMetaStruct) (ytlink string, err error) {
 
@@ -50,6 +56,7 @@ func (svc *service) SendSongMeta(meta *songMetaStruct) (ytlink string, err error
 		ArtistName: meta.ArtistName,
 		Duration:   meta.Duration,
 		Track:      meta.Track,
+		Title:      meta.Title,
 	}
 	res, err := svc.feedMetaTransporter.SongDownload(context.Background(), req)
 	if err != nil {
@@ -61,11 +68,10 @@ func (svc *service) SendSongMeta(meta *songMetaStruct) (ytlink string, err error
 	return res.YtUrl, nil
 }
 
-func (svc *service) SendPlaylistMeta(metas []songMetaStruct) ([]string, []error) {
+func (svc *service) SendPlaylistMeta(metas []songMetaStruct) ([]string, error) {
 
 	var (
-		errs    []error
-		results []string
+		requests []*SongMetaRequest
 	)
 	for _, meta := range metas {
 		req := &SongMetaRequest{
@@ -80,16 +86,19 @@ func (svc *service) SendPlaylistMeta(metas []songMetaStruct) ([]string, []error)
 			ArtistName: meta.ArtistName,
 			Duration:   meta.Duration,
 			Track:      meta.Track,
+			Title:      meta.Title,
 		}
-		res, err := svc.feedMetaTransporter.SongDownload(context.Background(), req)
-		if err != nil {
-			return nil, []error{err}
-		}
-		if ok := res.Success; !ok {
-			errs = append(errs, errors.New(res.ErrMsg))
-			continue
-		}
-		results = append(results, res.YtUrl)
+		requests = append(requests, req)
 	}
-	return results, errs
+	playlistRq := &PlaylistMetaRequest{
+		Songs: requests,
+	}
+	res, err := svc.feedMetaTransporter.PlaylistDownload(context.Background(), playlistRq)
+	if err != nil {
+		return nil, err
+	}
+	if ok := res.Success; !ok {
+		return nil, errors.New(res.ErrMsgs[0])
+	}
+	return res.YtUrls, nil
 }

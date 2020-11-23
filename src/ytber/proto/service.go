@@ -17,7 +17,8 @@ type Service interface {
 func (s *service) SongDownload(ctx context.Context, req *SongMetaRequest) (*SongMetaResponse, error) {
 	// TODO: Do stuff
 	log.WithFields(log.Fields{
-		"url": req.Url,
+		"url":   req.Url,
+		"title": req.Title,
 	}).Info("Received SongDownload Request")
 	res := &SongMetaResponse{
 		Success: true,

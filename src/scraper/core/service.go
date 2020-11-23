@@ -37,6 +37,7 @@ type Service interface {
 	scrapeSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
 	queueSongDownloadMessenger(_ *SongMeta, path *string) error
+	queuePlaylistDownloadMessenger(songmetas []SongMeta, path *string) error
 
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
@@ -163,12 +164,44 @@ func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) e
 		songmeta.ArtistName,
 		uint32(*songmeta.Duration),
 		uint32(*songmeta.Track),
+		songmeta.Title,
 	)
 	_, err := s.feedMetaTransporter.SendSongMeta(data)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *service) queuePlaylistDownloadMessenger(songmetas []SongMeta, path *string) error {
+	// TODO: Send a gRPC call and fire forget.
+	// panic("not implemented") // TODO: Implement
+	metas := s.feedMetaTransporter.NewPlaylistTransportStruct()
+	for _, songmeta := range songmetas {
+
+		data := s.feedMetaTransporter.NewSongMetaTransportStruct(
+			songmeta.Url,
+			songmeta.SongID,
+			songmeta.Thumbnail,
+			songmeta.Genre,
+			songmeta.Date,
+			songmeta.AlbumUrl,
+			songmeta.AlbumName,
+			songmeta.ArtistLink,
+			songmeta.ArtistName,
+			uint32(*songmeta.Duration),
+			uint32(*songmeta.Track),
+			songmeta.Title,
+		)
+		metas = append(metas, *data)
+	}
+
+	_, err := s.feedMetaTransporter.SendPlaylistMeta(metas)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // core services
@@ -184,8 +217,11 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 
 func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, error) {
 	songmetas, err := s.fetchSongsFromPlaylist(id)
+	if err != nil {
+		return nil, err
+	}
 	go s.redis.SaveMetaArray("playlist", id, songmetas, STATUS_META_FED)
-	return songmetas, err
+	return songmetas, s.queuePlaylistDownloadMessenger(songmetas, path)
 }
 
 func (s *service) PlaylistSync(url string, path *string) error {
