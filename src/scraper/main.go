@@ -10,11 +10,13 @@ import (
 
 	handler "github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/handlers"
 	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/core"
+	pb "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/rapito/go-spotify/spotify"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
 func redisConnect() (*redis.Client, error) {
@@ -87,6 +89,15 @@ func main() {
 		log.Error(err)
 		os.Exit(1)
 	}
+
+	// create a gRPC client for ytber
+	conn, err := grpc.Dial(os.Getenv("YTBER_GRPC_SERVER_ADDR"))
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+	client := pb.NewFeedMetaClient(conn)
+	log.Info(client)
 	coreSvc := core.NewService(redisRepo, spotifyClient)
 
 	// create a router and register handlers

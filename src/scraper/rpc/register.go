@@ -7,11 +7,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-func Register() (*pb.FeedMetaClient, error) {
+func Register() (*grpc.ClientConn, *pb.FeedMetaClient, error) {
 	conn, err := grpc.Dial(os.Getenv("YTBER_GRPC_SERVER_ADDR"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	client := pb.NewFeedMetaClient(conn)
-	return &client, nil
+	return conn, &client, nil
 }

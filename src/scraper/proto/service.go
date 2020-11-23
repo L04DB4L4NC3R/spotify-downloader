@@ -1,7 +1,7 @@
 package rpcservice
 
 import (
-	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/rpc/proto"
+	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto"
 )
 
 type service struct {

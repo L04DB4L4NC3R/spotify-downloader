@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/go-redis/redis/v8 v8.3.4
+	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.3.0
 	github.com/parnurzeal/gorequest v0.2.16 // indirect
