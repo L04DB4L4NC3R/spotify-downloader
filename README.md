@@ -27,6 +27,12 @@ make build-proto
 make run
 ```
 
+* Kill
+
+```sh
+make kill
+```
+
 * Build and run in hot reload mode
 
 ```sh

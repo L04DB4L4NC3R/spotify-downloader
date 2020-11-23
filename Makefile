@@ -5,9 +5,15 @@ build:
 
 .PHONY: run
 run:
+	make kill || echo Starting new process
 	make build
-	./bin/scraper
+	./bin/scraper &
+	./bin/ytber &
 
+.PHONY: kill
+kill:
+	pkill scraper
+	pkill ytber
 .PHONY: watch
 watch:
 	reflex -s -r '\.go$$' make run
