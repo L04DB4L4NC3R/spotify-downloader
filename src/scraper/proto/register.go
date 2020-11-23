@@ -7,7 +7,22 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-func Register() (*grpc.ClientConn, *FeedMetaClient, error) {
+type songMetaStruct struct {
+	Url        string
+	SongId     string
+	Thumbnail  string
+	Genre      string
+	Date       string
+	AlbumUrl   string
+	AlbumName  string
+	ArtistLink string
+	ArtistName string
+	Duration   uint32
+	Bitrate    uint32
+	Track      uint32
+}
+
+func Register() (*grpc.ClientConn, FeedMetaClient, error) {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
@@ -17,5 +32,5 @@ func Register() (*grpc.ClientConn, *FeedMetaClient, error) {
 	log.WithFields(log.Fields{
 		"grpc_server": addr,
 	}).Info("Connected to the gRPC server")
-	return conn, &client, nil
+	return conn, client, nil
 }

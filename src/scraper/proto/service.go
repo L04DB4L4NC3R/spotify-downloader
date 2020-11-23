@@ -10,8 +10,9 @@ type service struct {
 }
 
 type Service interface {
-	SendSongMeta(map[string]interface{}) (ytlink string, err error)
-	SendPlaylistMeta([]map[string]interface{}) (ytlinks []string, err []error)
+	SendSongMeta(*songMetaStruct) (ytlink string, err error)
+	SendPlaylistMeta([]songMetaStruct) (ytlinks []string, err []error)
+	NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, bitrate, track uint32) *songMetaStruct
 }
 
 func NewService(mtc FeedMetaClient) Service {
@@ -20,21 +21,37 @@ func NewService(mtc FeedMetaClient) Service {
 	}
 }
 
-func (svc *service) SendSongMeta(meta map[string]interface{}) (ytlink string, err error) {
+func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, bitrate, track uint32) *songMetaStruct {
+	return &songMetaStruct{
+		Url:        url,
+		SongId:     songId,
+		Thumbnail:  thumbnail,
+		Genre:      genre,
+		Date:       date,
+		AlbumUrl:   albumUrl,
+		AlbumName:  albumName,
+		ArtistLink: artistLink,
+		ArtistName: artistName,
+		Duration:   duration,
+		Bitrate:    bitrate,
+		Track:      track,
+	}
+}
+func (svc *service) SendSongMeta(meta *songMetaStruct) (ytlink string, err error) {
 
 	req := &SongMetaRequest{
-		Url:        meta["url"].(string),
-		SongId:     meta["song_id"].(string),
-		Thumbnail:  meta["thumbnail"].(string),
-		Genre:      meta["genre"].(string),
-		Date:       meta["date"].(string),
-		AlbumUrl:   meta["album_url"].(string),
-		AlbumName:  meta["album_name"].(string),
-		ArtistLink: meta["album_link"].(string),
-		ArtistName: meta["album_name"].(string),
-		Duration:   meta["duration"].(uint32),
-		Bitrate:    meta["bitrate"].(uint32),
-		Track:      meta["track"].(uint32),
+		Url:        meta.Url,
+		SongId:     meta.SongId,
+		Thumbnail:  meta.Thumbnail,
+		Genre:      meta.Genre,
+		Date:       meta.Date,
+		AlbumUrl:   meta.AlbumUrl,
+		AlbumName:  meta.AlbumName,
+		ArtistLink: meta.ArtistLink,
+		ArtistName: meta.ArtistName,
+		Duration:   meta.Duration,
+		Bitrate:    meta.Bitrate,
+		Track:      meta.Track,
 	}
 	res, err := svc.feedMetaTransporter.SongDownload(context.Background(), req)
 	if err != nil {
@@ -46,7 +63,7 @@ func (svc *service) SendSongMeta(meta map[string]interface{}) (ytlink string, er
 	return res.YtUrl, nil
 }
 
-func (svc *service) SendPlaylistMeta(metas []map[string]interface{}) ([]string, []error) {
+func (svc *service) SendPlaylistMeta(metas []songMetaStruct) ([]string, []error) {
 
 	var (
 		errs    []error
@@ -54,18 +71,18 @@ func (svc *service) SendPlaylistMeta(metas []map[string]interface{}) ([]string, 
 	)
 	for _, meta := range metas {
 		req := &SongMetaRequest{
-			Url:        meta["url"].(string),
-			SongId:     meta["song_id"].(string),
-			Thumbnail:  meta["thumbnail"].(string),
-			Genre:      meta["genre"].(string),
-			Date:       meta["date"].(string),
-			AlbumUrl:   meta["album_url"].(string),
-			AlbumName:  meta["album_name"].(string),
-			ArtistLink: meta["album_link"].(string),
-			ArtistName: meta["album_name"].(string),
-			Duration:   meta["duration"].(uint32),
-			Bitrate:    meta["bitrate"].(uint32),
-			Track:      meta["track"].(uint32),
+			Url:        meta.Url,
+			SongId:     meta.SongId,
+			Thumbnail:  meta.Thumbnail,
+			Genre:      meta.Genre,
+			Date:       meta.Date,
+			AlbumUrl:   meta.AlbumUrl,
+			AlbumName:  meta.AlbumName,
+			ArtistLink: meta.ArtistLink,
+			ArtistName: meta.ArtistName,
+			Duration:   meta.Duration,
+			Bitrate:    meta.Bitrate,
+			Track:      meta.Track,
 		}
 		res, err := svc.feedMetaTransporter.SongDownload(context.Background(), req)
 		if err != nil {

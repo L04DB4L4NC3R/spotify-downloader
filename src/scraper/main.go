@@ -99,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
-	coreSvc := core.NewService(redisRepo, spotifyClient, feedMetaClient)
+	coreSvc := core.NewService(redisRepo, spotifyClient, pb.NewService(feedMetaClient))
 
 	// create a router and register handlers
 	r := mux.NewRouter()

@@ -47,10 +47,10 @@ type Service interface {
 type service struct {
 	redis               Repository
 	spotify             *spotify.Spotify
-	feedMetaTransporter *pb.FeedMetaClient
+	feedMetaTransporter pb.Service
 }
 
-func NewService(r Repository, s *spotify.Spotify, feedMetaTransporter *pb.FeedMetaClient) Service {
+func NewService(r Repository, s *spotify.Spotify, feedMetaTransporter pb.Service) Service {
 	return &service{
 		redis:               r,
 		spotify:             s,
@@ -148,9 +148,27 @@ func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
 }
 
 // Send a gRPC call to the ytber backend for further processing
-func (s *service) queueSongDownloadMessenger(_ *SongMeta, path *string) error {
+func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) error {
 	// TODO: Send a gRPC call and fire forget.
 	// panic("not implemented") // TODO: Implement
+	data := s.feedMetaTransporter.NewSongMetaTransportStruct(
+		songmeta.Url,
+		songmeta.SongID,
+		songmeta.Thumbnail,
+		songmeta.Genre,
+		songmeta.Date,
+		songmeta.AlbumUrl,
+		songmeta.AlbumName,
+		songmeta.ArtistLink,
+		songmeta.ArtistName,
+		uint32(*songmeta.Duration),
+		uint32(*songmeta.Bitrate),
+		uint32(*songmeta.Track),
+	)
+	_, err := s.feedMetaTransporter.SendSongMeta(data)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
