@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package playlist;
+
+import "proto/song.proto";
+
+option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto;pb";
+
+message PlaylistMetaRequest {
+	repeated song.SongMetaRequest songs = 1;
+}
+
+message PlaylistMetaResponse {
+	repeated string yt_urls = 1;
+	repeated string err_msgs = 2;
+	bool success = 3;
+}

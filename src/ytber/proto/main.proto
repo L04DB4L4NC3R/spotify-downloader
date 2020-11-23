@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package main;
+
+import "proto/song.proto";
+import "proto/playlist.proto";
+
+option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto;pb";
+
+service FeedMeta {
+	rpc SongDownload(song.SongMetaRequest) returns (song.SongMetaResponse) {}
+	rpc PlaylistDownload(playlist.PlaylistMetaRequest) returns (playlist.PlaylistMetaResponse) {}
+}

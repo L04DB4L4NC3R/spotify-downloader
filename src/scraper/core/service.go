@@ -162,7 +162,6 @@ func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) e
 		songmeta.ArtistLink,
 		songmeta.ArtistName,
 		uint32(*songmeta.Duration),
-		uint32(*songmeta.Bitrate),
 		uint32(*songmeta.Track),
 	)
 	_, err := s.feedMetaTransporter.SendSongMeta(data)
