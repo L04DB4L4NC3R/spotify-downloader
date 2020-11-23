@@ -8,8 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	handler "github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/handlers"
-	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/core"
+	"github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/core"
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"

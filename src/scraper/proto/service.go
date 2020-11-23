@@ -1,11 +1,7 @@
-package rpcservice
-
-import (
-	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto"
-)
+package pb
 
 type service struct {
-	feedMetaTransporter *pb.FeedMetaClient
+	feedMetaTransporter *FeedMetaClient
 }
 
 type Service interface {
@@ -13,7 +9,7 @@ type Service interface {
 	SendPlaylistMeta([]map[string]interface{}) (ytlinks []string, err []error)
 }
 
-func NewService(mtc *pb.FeedMetaClient) Service {
+func NewService(mtc *FeedMetaClient) Service {
 	return &service{
 		feedMetaTransporter: mtc,
 	}

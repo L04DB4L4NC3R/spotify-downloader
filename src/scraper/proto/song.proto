@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package song;
 
-option go_package = "proto;pb";
+option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto;pb";
 
 message SongMetaRequest {
 	string url = 1;

@@ -5,7 +5,7 @@ package main;
 import "proto/song.proto";
 import "proto/playlist.proto";
 
-option go_package = "rpc;pb";
+option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/src/scraper/proto;pb";
 
 service FeedMeta {
 	rpc SongDownload(song.SongMetaRequest) returns (song.SongMetaResponse) {}
