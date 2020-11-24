@@ -9,9 +9,9 @@ import (
 )
 
 func init() {
-	err := godotenv.Load("./config/scraper.env")
+	err := godotenv.Load("./config/local.env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Warn("No env file to load")
 	}
 	// Log as JSON instead of the default ASCII formatter.
 	log.SetFormatter(&log.JSONFormatter{})

@@ -12,7 +12,8 @@
 *.out
 .env
 bin
-scraper.env
+local.env
+docker.env
 *.pb.go
 
 # Dependency directories (remove the comment below to include it)

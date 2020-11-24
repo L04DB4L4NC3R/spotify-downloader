@@ -40,6 +40,10 @@ go get github.com/cespare/reflex
 make watch -j`nproc`
 ```
 
+
+## Disclaimer
+Read the [disclaimer](disclaimer.md) before using this software.
+
 ## Roadmap
 
 * Single song download
