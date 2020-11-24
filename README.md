@@ -14,7 +14,7 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 ## How to run
 
-* Configure secrets: Copy `config/scraper.env.sample` to `config/scraper.env` and fill the secrets
+* Configure secrets: Copy `config/local.env.sample` to `config/local.env` and fill the secrets
 
 * Generate protocol buffer code (requires protoc & gRPC installation)
 
@@ -40,6 +40,21 @@ go get github.com/cespare/reflex
 make watch -j`nproc`
 ```
 
+## Run using docker compose
+
+* Configure secrets: Copy `config/docker.env.sample` to `config/docker.env` and fill the secrets
+
+* Change script permissions
+
+```sh
+chmod +x ./scripts/docker-setup.sh
+```
+
+* Run
+
+```sh
+./scripts/docker-setup.sh
+```
 
 ## Disclaimer
 Read the [disclaimer](disclaimer.md) before using this software.

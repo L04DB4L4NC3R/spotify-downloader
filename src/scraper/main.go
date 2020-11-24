@@ -22,7 +22,7 @@ func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
 	rdc := redis.NewClient(&redis.Options{
 		Addr:     addr,
-		Password: os.Getenv("REDIS_PASS"),
+		Password: os.Getenv("REDIS_PASSWORD"),
 		DB:       0,
 	})
 	ctx := context.Background()
@@ -106,7 +106,7 @@ func main() {
 	handler.RegisterHandler(r, coreSvc)
 
 	// make HTTP server using mux
-	addr := "127.0.0.1:3000"
+	addr := "0.0.0.0:3000"
 	var rwTimeout time.Duration = 15
 	srv := &http.Server{
 		Handler:      r,
