@@ -61,7 +61,7 @@ func globalChannelPool(cerr chan core.AsyncErrors) {
 }
 
 func init() {
-	err := godotenv.Load("./config/local.env")
+	err := godotenv.Load("./config/secret.env")
 	if err != nil {
 		log.Warn("No env file to load")
 	}

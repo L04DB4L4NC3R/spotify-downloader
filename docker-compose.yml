@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: ./src/scraper/Dockerfile
-    env_file: ./config/docker.env
+    env_file: ./config/secret.env
     image: angadsharma1016/spotify-downloader-scraper
     ports:
       - 3000:3000
@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: ./src/ytber/Dockerfile
-    env_file: ./config/docker.env
+    env_file: ./config/secret.env
     image: angadsharma1016/spotify-downloader-ytber
     depends_on:
       - redis

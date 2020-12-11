@@ -12,10 +12,8 @@
 *.out
 .env
 bin
-local.env
-docker.env
+secret.env
 *.pb.go
-zk-single-kafka-single
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
