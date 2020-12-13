@@ -3,6 +3,7 @@ package pkg
 import (
 	context "context"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"os/exec"
@@ -23,10 +24,6 @@ const (
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
-)
-
-var (
-	PLAYLIST_BATCH_SIZE, _ = strconv.Atoi(os.Getenv("PLAYLIST_BATCH_SIZE"))
 )
 
 type service struct {
@@ -65,9 +62,10 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	}).Info("Received Playlist Download Request")
 
 	go func(count int) {
+		PLAYLIST_BATCH_SIZE, _ := strconv.Atoi(os.Getenv("PLAYLIST_BATCH_SIZE"))
 		var (
-			batchCount   int = 1
-			totalBatches int = count / PLAYLIST_BATCH_SIZE
+			batchCount   int     = 1
+			totalBatches float64 = math.Ceil(float64(count) / float64(PLAYLIST_BATCH_SIZE))
 		)
 		for i := 0; i < count; i += PLAYLIST_BATCH_SIZE {
 			var offset int = i + PLAYLIST_BATCH_SIZE
