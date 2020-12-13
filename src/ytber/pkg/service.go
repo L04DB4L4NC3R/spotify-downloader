@@ -26,7 +26,12 @@ const (
 	// TODO: for docker bind mount
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 
-	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
+	// image url
+	// song path
+	// download path
+	// title
+	// song path
+	YT_DOWNLOAD_METADATA_ARGS = " --postprocessor-args '-i %s -map_metadata 0 -map 0 -map 1' --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
 
 	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
 )
@@ -101,9 +106,10 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 
-	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
+	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.Thumbnail, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
+	fmt.Println(downloadcommand)
 	cmd := exec.Command("sh", "-c", downloadcommand)
 
 	if err := cmd.Start(); err != nil {
@@ -121,10 +127,10 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	}
 
 	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_COMPLETE)
-	wg.Done()
 	log.WithFields(log.Fields{
 		"song": query,
 	}).Info("Download Completed")
+	wg.Done()
 }
 
 func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) {
