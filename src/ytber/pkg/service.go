@@ -24,8 +24,11 @@ const (
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
 	// TODO: for docker bind mount
-	// YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\" -o \"music/%(title)s.%(ext)s\""
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
+
+	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
+
+	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
 )
 
 type service struct {
@@ -35,7 +38,7 @@ type service struct {
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	offloadToYoutubeDL(ctx context.Context, format string, query string, songId string, wg *sync.WaitGroup)
+	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest, wg *sync.WaitGroup)
 	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest)
 }
 
@@ -50,7 +53,7 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 	// no need for this but maintaining it because wg is useful in the case of playlists
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	go s.offloadToYoutubeDL(ctx, "mp3", query, req.SongId, wg)
+	go s.offloadToYoutubeDL(ctx, "mp3", query, req, wg)
 	res := &pb.SongMetaResponse{
 		Success: true,
 	}
@@ -93,27 +96,31 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 func (s *service) offloadToYoutubeDL(ctx context.Context,
 	format string,
 	query string,
-	songId string,
+	songmeta *pb.SongMetaRequest,
 	wg *sync.WaitGroup) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
-	cmd := exec.Command("sh", "-c", command)
+
+	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
+
+	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
+	cmd := exec.Command("sh", "-c", downloadcommand)
 
 	if err := cmd.Start(); err != nil {
-		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
+		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
 	}
 
-	go s.redis.UpdateStatus("song", songId, STATUS_DWN_QUEUED)
+	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_QUEUED)
 
 	if err := cmd.Wait(); err != nil {
-		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
+		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
 	}
 
-	go s.redis.UpdateStatus("song", songId, STATUS_DWN_COMPLETE)
+	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_COMPLETE)
 	wg.Done()
 	log.WithFields(log.Fields{
 		"song": query,
@@ -128,7 +135,7 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 
 	for _, v := range slice {
 		query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
-		go s.offloadToYoutubeDL(ctx, "mp3", query, v.SongId, songWg)
+		go s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
 	}
 
 	// to maintain atomicity from other batches so that no batch can start executing once this is done
