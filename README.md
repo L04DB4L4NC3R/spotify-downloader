@@ -14,6 +14,8 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 ## How to run
 
+* Install `youtube-dl` and `ffmpeg`
+
 * Configure secrets: Copy `config/local.env.sample` to `config/local.env` and fill the secrets
 
 * Generate protocol buffer code (requires protoc & gRPC installation)
@@ -35,7 +37,7 @@ make kill
 
 ## Run using docker compose
 
-* Configure secrets: Copy `config/docker.env.sample` to `config/docker.env` and fill the secrets
+* Edit the ./config/secret.env to expose relevent secrets to the containers
 
 * Change script permissions
 
