@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PASS=$(grep REDIS_PASSWORD= config/docker.env | cut -d'=' -f2 | tr -d ' ')
+PASS=$(grep REDIS_PASSWORD_DOCKER= config/secret.env | cut -d'=' -f2 | tr -d ' ')
 
 docker-compose build
 

@@ -17,11 +17,15 @@ services:
       dockerfile: ./src/ytber/Dockerfile
     env_file: ./config/secret.env
     image: angadsharma1016/spotify-downloader-ytber
+      #volumes:
+      #- ./music:/root/
     depends_on:
       - redis
 
   redis:
     image: redis:latest
     command: redis-server --requirepass $REDIS_PASSWORD
+    volumes:
+      - ./data:/data
     ports:
       - 6379:6379

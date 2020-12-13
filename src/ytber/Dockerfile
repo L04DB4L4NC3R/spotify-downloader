@@ -11,8 +11,11 @@ RUN protoc --go_out=. --go_opt=paths=source_relative \
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ytber .
 
-FROM alpine:latest
+FROM python:3-alpine
 RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ffmpeg curl && \
+     curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl && \
+     chmod a+rx /usr/local/bin/youtube-dl
 WORKDIR /root/
 COPY --from=0 /app .
 CMD ["./ytber"]

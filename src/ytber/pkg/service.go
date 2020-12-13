@@ -95,7 +95,7 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	wg *sync.WaitGroup) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
-	cmd := exec.Command("bash", "-c", command)
+	cmd := exec.Command("sh", "-c", command)
 
 	if err := cmd.Start(); err != nil {
 		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)

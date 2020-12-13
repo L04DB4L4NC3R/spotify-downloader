@@ -19,3 +19,5 @@ secret.env
 # vendor/
 *.mp3
 *.webm
+music
+data
