@@ -142,7 +142,6 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	dwpath = dwpath[:len(dwpath)-1]
 
 	thumbscommand := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songmeta.Title, dwpath)
-	fmt.Println(thumbscommand)
 	cmd = exec.Command("sh", "-c", thumbscommand)
 
 	if err := cmd.Start(); err != nil {
