@@ -5,6 +5,7 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 - [X] Song download on a URL basis
 - [X] Entire playlist download
+- [ ] Apply metadata on downloaded songs
 - [ ] Entire album download
 - [ ] Pause and resume download ability
 - [ ] Album sync daemon (CRON or need basis)
