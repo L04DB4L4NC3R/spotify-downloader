@@ -1,31 +1,32 @@
 package pkg
 
 import (
+	"bytes"
 	context "context"
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
 	redis "github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/youtube/v3"
 	"google.golang.org/grpc"
 )
 
-const (
-	YT_BASE_URL = "https://youtube.com/watch?v="
+var (
+	YT_BASE_URL     = "https://youtube.com/watch?v="
+	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 )
 
 type service struct {
-	ytSvc       *youtube.Service
 	redisClient *redis.Client
 }
 
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	OffloadToYoutubeDL(ctx context.Context, videoId string)
+	OffloadToYoutubeDL(ctx context.Context, format string, query string)
 }
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
@@ -36,20 +37,12 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 	}).Info("Received SongDownload Request")
 
 	query := fmt.Sprintf("%s - %s", req.ArtistName, req.AlbumName)
-	resp, err := s.ytSvc.Search.List([]string{"id"}).
-		Q(query).
-		MaxResults(1).
-		Do()
-	if err != nil {
-		log.Warn(err)
-		return nil, err
-	}
-	videoId := resp.Items[0].Id.VideoId
-	go s.offloadToYoutubeDL(ctx, videoId)
+	log.Info(query)
+	go s.offloadToYoutubeDL(ctx, "mp3", query)
 	res := &pb.SongMetaResponse{
 		Success: true,
 		ErrMsg:  "",
-		YtUrl:   videoId,
+		YtUrl:   "",
 	}
 	return res, nil
 }
@@ -67,20 +60,31 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	return res, nil
 }
 
-func (s *service) offloadToYoutubeDL(ctx context.Context, videoId string) {
-	url := YT_BASE_URL + videoId
-	log.Info(url)
-	// TODO: offlaod to youtubedl
+func (s *service) offloadToYoutubeDL(ctx context.Context, format string, query string) {
+
+	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
+	cmd := exec.Command("bash", "-c", command)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	var er bytes.Buffer
+	cmd.Stderr = &er
+	if err := cmd.Run(); err != nil {
+		log.Error(err)
+	}
+	log.Printf("translated phrase: %q\n", out.String())
+	log.Printf("error phrase: %q\n", er.String())
 }
 
-func Register(ytSvc *youtube.Service, rdc *redis.Client) error {
+func Register(rdc *redis.Client) error {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 	srv := grpc.NewServer()
-	pb.RegisterFeedMetaServer(srv, &service{ytSvc, rdc})
+	pb.RegisterFeedMetaServer(srv, &service{rdc})
 	log.WithFields(log.Fields{
 		"grpc_server": addr,
 	}).Info("Started gRPC server")

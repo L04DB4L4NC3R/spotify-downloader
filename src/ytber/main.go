@@ -8,17 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/option"
-	youtube "google.golang.org/api/youtube/v3"
 )
-
-func connectYoutube(ctx context.Context, apikey string) (*youtube.Service, error) {
-	youtubeService, err := youtube.NewService(ctx, option.WithAPIKey(apikey))
-	if err != nil {
-		return nil, err
-	}
-	return youtubeService, nil
-}
 
 func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
@@ -59,12 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx := context.Background()
-	ytSvc, err := connectYoutube(ctx, os.Getenv("YOUTUBE_APIKEY"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := pkg.Register(ytSvc, rdc); err != nil {
+	if err := pkg.Register(rdc); err != nil {
 		log.Fatal(err)
 	}
 }
