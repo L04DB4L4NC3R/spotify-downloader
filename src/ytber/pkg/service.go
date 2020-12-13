@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
+	redis "github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/youtube/v3"
 	"google.golang.org/grpc"
@@ -16,7 +17,8 @@ const (
 )
 
 type service struct {
-	ytSvc *youtube.Service
+	ytSvc       *youtube.Service
+	redisClient *redis.Client
 }
 
 type Service interface {
@@ -67,14 +69,14 @@ func (s *service) offloadToYoutubeDL(ctx context.Context, videoId string) {
 	// TODO: offlaod to youtubedl
 }
 
-func Register(ytSvc *youtube.Service) error {
+func Register(ytSvc *youtube.Service, rdc *redis.Client) error {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 	srv := grpc.NewServer()
-	pb.RegisterFeedMetaServer(srv, &service{ytSvc})
+	pb.RegisterFeedMetaServer(srv, &service{ytSvc, rdc})
 	log.WithFields(log.Fields{
 		"grpc_server": addr,
 	}).Info("Started gRPC server")

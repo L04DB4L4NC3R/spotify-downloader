@@ -5,6 +5,7 @@ import (
 	"os"
 
 	pkg "github.com/L04DB4L4NC3R/spotify-downloader/ytber/pkg"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
@@ -17,6 +18,24 @@ func connectYoutube(ctx context.Context, apikey string) (*youtube.Service, error
 		return nil, err
 	}
 	return youtubeService, nil
+}
+
+func redisConnect() (*redis.Client, error) {
+	addr := os.Getenv("REDIS_ADDR")
+	rdc := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       0,
+	})
+	ctx := context.Background()
+	_, err := rdc.Ping(ctx).Result()
+	if err != nil {
+		return nil, err
+	}
+	log.WithFields(log.Fields{
+		"redis_server": addr,
+	}).Info("Connected to Redis")
+	return rdc, nil
 }
 
 func init() {
@@ -36,12 +55,16 @@ func init() {
 }
 
 func main() {
+	rdc, err := redisConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
 	ctx := context.Background()
 	ytSvc, err := connectYoutube(ctx, os.Getenv("YOUTUBE_APIKEY"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := pkg.Register(ytSvc); err != nil {
+	if err := pkg.Register(ytSvc, rdc); err != nil {
 		log.Fatal(err)
 	}
 }
