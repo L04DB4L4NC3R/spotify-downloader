@@ -22,10 +22,10 @@ const (
 	STATUS_DWN_QUEUED   = "QUEUED"
 	STATUS_DWN_FAILED   = "FAILED"
 	STATUS_DWN_COMPLETE = "COMPLETED"
+	STATUS_FINISHED     = "FINISHED"
 
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
-	// TODO: for docker bind mount
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 
 	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
@@ -136,7 +136,6 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 		"song": query,
 	}).Info("Download Completed")
 
-	// TODO: apply thumbnail (make a status for that also in redis)
 	// apply thumbnail
 	logs := strings.Split(out.String(), "\n")
 	dwpath := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")[1]
@@ -154,6 +153,7 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 		wg.Done()
 		return
 	}
+	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_FINISHED)
 	log.WithFields(log.Fields{
 		"song": songmeta.Title,
 	}).Info("Thumbnail Applied")
