@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	context "context"
 	"fmt"
 	"math"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
@@ -26,14 +28,16 @@ const (
 	// TODO: for docker bind mount
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 
+	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
+
+	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
+
 	// image url
 	// song path
 	// download path
 	// title
 	// song path
-	YT_DOWNLOAD_METADATA_ARGS = " --postprocessor-args '-i %s -map_metadata 0 -map 0 -map 1' --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
-
-	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
+	FFMPEG_THUMBNAIL_CMD = "ffmpeg -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s.mp3\" && rm \"%s\""
 )
 
 type service struct {
@@ -106,12 +110,13 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 
-	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.Thumbnail, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
+	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
-	fmt.Println(downloadcommand)
 	cmd := exec.Command("sh", "-c", downloadcommand)
 
+	var out bytes.Buffer
+	cmd.Stdout = &out
 	if err := cmd.Start(); err != nil {
 		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
@@ -130,6 +135,28 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	log.WithFields(log.Fields{
 		"song": query,
 	}).Info("Download Completed")
+
+	// TODO: apply thumbnail (make a status for that also in redis)
+	// apply thumbnail
+	logs := strings.Split(out.String(), "\n")
+	dwpath := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")[1]
+	dwpath = dwpath[:len(dwpath)-1]
+
+	thumbscommand := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songmeta.Title, dwpath)
+	fmt.Println(thumbscommand)
+	cmd = exec.Command("sh", "-c", thumbscommand)
+
+	if err := cmd.Start(); err != nil {
+		wg.Done()
+		return
+	}
+	if err := cmd.Wait(); err != nil {
+		wg.Done()
+		return
+	}
+	log.WithFields(log.Fields{
+		"song": songmeta.Title,
+	}).Info("Thumbnail Applied")
 	wg.Done()
 }
 
