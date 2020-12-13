@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"bytes"
 	context "context"
 	"fmt"
 	"net"
@@ -65,16 +64,18 @@ func (s *service) offloadToYoutubeDL(ctx context.Context, format string, query s
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 	cmd := exec.Command("bash", "-c", command)
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
+	// TODO: update redis in both instances
+	if err := cmd.Start(); err != nil {
+		log.Error(err)
+		return
+	}
 
-	var er bytes.Buffer
-	cmd.Stderr = &er
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Wait(); err != nil {
 		log.Error(err)
 	}
-	log.Printf("translated phrase: %q\n", out.String())
-	log.Printf("error phrase: %q\n", er.String())
+	log.WithFields(log.Fields{
+		"song": query,
+	}).Info("Download Completed")
 }
 
 func Register(rdc *redis.Client) error {
