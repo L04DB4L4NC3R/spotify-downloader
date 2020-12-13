@@ -21,3 +21,4 @@ secret.env
 *.webm
 music
 data
+*.rdb

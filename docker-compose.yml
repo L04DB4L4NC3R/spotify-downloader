@@ -17,8 +17,8 @@ services:
       dockerfile: ./src/ytber/Dockerfile
     env_file: ./config/secret.env
     image: angadsharma1016/spotify-downloader-ytber
-      #volumes:
-      #- ./music:/root/
+    volumes:
+      - ./music/:/root/music/
     depends_on:
       - redis
 

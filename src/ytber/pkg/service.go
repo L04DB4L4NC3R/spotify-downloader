@@ -23,6 +23,8 @@ const (
 
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
+	// TODO: for docker bind mount
+	// YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\" -o \"music/%(title)s.%(ext)s\""
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 )
 
