@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
@@ -17,13 +18,15 @@ const (
 	STATUS_META_FED     = "FED"
 	STATUS_DWN_QUEUED   = "QUEUED"
 	STATUS_DWN_FAILED   = "FAILED"
-	STATUS_DWN_COMPLETE = "COMPLETE"
+	STATUS_DWN_COMPLETE = "COMPLETED"
 
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
+)
 
-	PLAYLIST_BATCH_SIZE = 20
+var (
+	PLAYLIST_BATCH_SIZE, _ = strconv.Atoi(os.Getenv("PLAYLIST_BATCH_SIZE"))
 )
 
 type service struct {
@@ -62,12 +65,22 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	}).Info("Received Playlist Download Request")
 
 	go func(count int) {
+		var (
+			batchCount   int = 1
+			totalBatches int = count / PLAYLIST_BATCH_SIZE
+		)
 		for i := 0; i < count; i += PLAYLIST_BATCH_SIZE {
 			var offset int = i + PLAYLIST_BATCH_SIZE
 			if offset >= count {
 				offset = count - 1
 			}
+			log.WithFields(log.Fields{
+				"total_songs_count": count,
+				"batch_number":      batchCount,
+				"total_batches":     totalBatches,
+			}).Info("Playlist Batch Execution")
 			s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
+			batchCount++
 		}
 	}(count)
 
