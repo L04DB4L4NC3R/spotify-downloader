@@ -2,6 +2,7 @@ package pkg
 
 import (
 	context "context"
+	"fmt"
 	"net"
 	"os"
 
@@ -34,8 +35,11 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 		"title": req.Title,
 	}).Info("Received SongDownload Request")
 
-	query := []string{req.ArtistName, req.AlbumName}
-	resp, err := s.ytSvc.Search.List(query).MaxResults(1).Do()
+	query := fmt.Sprintf("%s - %s", req.ArtistName, req.AlbumName)
+	resp, err := s.ytSvc.Search.List([]string{"id"}).
+		Q(query).
+		MaxResults(1).
+		Do()
 	if err != nil {
 		log.Warn(err)
 		return nil, err
