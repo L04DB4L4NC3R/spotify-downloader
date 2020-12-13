@@ -3,12 +3,26 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	pkg "github.com/L04DB4L4NC3R/spotify-downloader/ytber/pkg"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
+
+func globalChannelPool(cerr chan pkg.AsyncErrors) {
+	select {
+	case errobj := <-cerr:
+		log.WithFields(log.Fields{
+			"error": errobj.Err(),
+			"msg":   errobj.Msg(),
+			"src":   errobj.Src(),
+			"data":  errobj.Data(),
+		}).Error("Some error was caught by the async error handler")
+	}
+}
 
 func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
@@ -49,7 +63,27 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := pkg.Register(rdc); err != nil {
+
+	cerr := make(chan pkg.AsyncErrors)
+	redisRepo := pkg.NewRedisRepo(rdc, cerr)
+	go globalChannelPool(cerr)
+	cleanup(cerr)
+
+	if err := pkg.Register(redisRepo); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func cleanup(cerr chan pkg.AsyncErrors) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		select {
+		case <-c:
+			log.Infoln("Graceful Shutdown Initiated")
+			close(cerr)
+			log.Infoln("Closed Global Async Error Channel")
+			os.Exit(0)
+		}
+	}()
 }

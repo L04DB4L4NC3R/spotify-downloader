@@ -8,40 +8,42 @@ import (
 	"os/exec"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
-	redis "github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
-var (
-	YT_BASE_URL     = "https://youtube.com/watch?v="
+const (
+	STATUS_META_FED     = "FED"
+	STATUS_DWN_QUEUED   = "QUEUED"
+	STATUS_DWN_FAILED   = "FAILED"
+	STATUS_DWN_COMPLETE = "COMPLETE"
+
+	YT_BASE_URL = "https://youtube.com/watch?v="
+
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 )
 
 type service struct {
-	redisClient *redis.Client
+	redis Repository
 }
 
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	OffloadToYoutubeDL(ctx context.Context, format string, query string)
+	offloadToYoutubeDL(ctx context.Context, format string, query string, songId string)
 }
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
-	// TODO: Do stuff
 	log.WithFields(log.Fields{
 		"url":   req.Url,
 		"title": req.Title,
 	}).Info("Received SongDownload Request")
 
-	query := fmt.Sprintf("%s - %s", req.ArtistName, req.AlbumName)
-	log.Info(query)
-	go s.offloadToYoutubeDL(ctx, "mp3", query)
+	query := fmt.Sprintf("%s - %s", req.Title, req.ArtistName)
+
+	go s.offloadToYoutubeDL(ctx, "mp3", query, req.SongId)
 	res := &pb.SongMetaResponse{
 		Success: true,
-		ErrMsg:  "",
-		YtUrl:   "",
 	}
 	return res, nil
 }
@@ -59,26 +61,33 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	return res, nil
 }
 
-func (s *service) offloadToYoutubeDL(ctx context.Context, format string, query string) {
+func (s *service) offloadToYoutubeDL(ctx context.Context,
+	format string,
+	query string,
+	songId string) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 	cmd := exec.Command("bash", "-c", command)
 
-	// TODO: update redis in both instances
 	if err := cmd.Start(); err != nil {
-		log.Error(err)
+		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
 		return
 	}
 
+	go s.redis.UpdateStatus("song", songId, STATUS_DWN_QUEUED)
+
 	if err := cmd.Wait(); err != nil {
-		log.Error(err)
+		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
+		return
 	}
+
+	go s.redis.UpdateStatus("song", songId, STATUS_DWN_COMPLETE)
 	log.WithFields(log.Fields{
 		"song": query,
 	}).Info("Download Completed")
 }
 
-func Register(rdc *redis.Client) error {
+func Register(rdc Repository) error {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
