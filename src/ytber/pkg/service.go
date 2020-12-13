@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sync"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
 	log "github.com/sirupsen/logrus"
@@ -21,6 +22,8 @@ const (
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
+
+	PLAYLIST_BATCH_SIZE = 20
 )
 
 type service struct {
@@ -30,7 +33,8 @@ type service struct {
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	offloadToYoutubeDL(ctx context.Context, format string, query string, songId string)
+	offloadToYoutubeDL(ctx context.Context, format string, query string, songId string, wg *sync.WaitGroup)
+	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest)
 }
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
@@ -41,7 +45,10 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 
 	query := fmt.Sprintf("%s - %s", req.Title, req.ArtistName)
 
-	go s.offloadToYoutubeDL(ctx, "mp3", query, req.SongId)
+	// no need for this but maintaining it because wg is useful in the case of playlists
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go s.offloadToYoutubeDL(ctx, "mp3", query, req.SongId, wg)
 	res := &pb.SongMetaResponse{
 		Success: true,
 	}
@@ -49,14 +56,23 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 }
 
 func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error) {
-	// TODO: Do stuff
+	var count int = len(req.Songs)
 	log.WithFields(log.Fields{
-		"count": len(req.Songs),
+		"count": count,
 	}).Info("Received Playlist Download Request")
+
+	go func(count int) {
+		for i := 0; i < count; i += PLAYLIST_BATCH_SIZE {
+			var offset int = i + PLAYLIST_BATCH_SIZE
+			if offset >= count {
+				offset = count - 1
+			}
+			s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
+		}
+	}(count)
+
 	res := &pb.PlaylistMetaResponse{
 		Success: true,
-		ErrMsgs: []string{},
-		YtUrls:  []string{},
 	}
 	return res, nil
 }
@@ -64,13 +80,15 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 func (s *service) offloadToYoutubeDL(ctx context.Context,
 	format string,
 	query string,
-	songId string) {
+	songId string,
+	wg *sync.WaitGroup) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 	cmd := exec.Command("bash", "-c", command)
 
 	if err := cmd.Start(); err != nil {
 		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
+		wg.Done()
 		return
 	}
 
@@ -78,13 +96,31 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 
 	if err := cmd.Wait(); err != nil {
 		go s.redis.UpdateStatus("song", songId, STATUS_DWN_FAILED)
+		wg.Done()
 		return
 	}
 
 	go s.redis.UpdateStatus("song", songId, STATUS_DWN_COMPLETE)
+	wg.Done()
 	log.WithFields(log.Fields{
 		"song": query,
 	}).Info("Download Completed")
+}
+
+func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) {
+
+	// to see when all the songs of the current batch are downloaded
+	songWg := &sync.WaitGroup{}
+	songWg.Add(len(slice))
+
+	for _, v := range slice {
+		query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
+		go s.offloadToYoutubeDL(ctx, "mp3", query, v.SongId, songWg)
+	}
+
+	// to maintain atomicity from other batches so that no batch can start executing once this is done
+	// wait till all the songs in the current batch are downloaded, then mark the current batch as done
+	songWg.Wait()
 }
 
 func Register(rdc Repository) error {
