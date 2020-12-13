@@ -1,12 +1,23 @@
 package main
 
 import (
+	"context"
 	"os"
 
-	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
+	pkg "github.com/L04DB4L4NC3R/spotify-downloader/ytber/pkg"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
+	youtube "google.golang.org/api/youtube/v3"
 )
+
+func connectYoutube(ctx context.Context, apikey string) (*youtube.Service, error) {
+	youtubeService, err := youtube.NewService(ctx, option.WithAPIKey(apikey))
+	if err != nil {
+		return nil, err
+	}
+	return youtubeService, nil
+}
 
 func init() {
 	err := godotenv.Load("./config/secret.env")
@@ -25,7 +36,12 @@ func init() {
 }
 
 func main() {
-	if err := pb.Register(); err != nil {
+	ctx := context.Background()
+	ytSvc, err := connectYoutube(ctx, os.Getenv("YOUTUBE_APIKEY"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := pkg.Register(ytSvc); err != nil {
 		log.Fatal(err)
 	}
 }

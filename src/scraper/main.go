@@ -81,7 +81,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer rdc.Close()
 	// create redis error handling channel
 	cerr := make(chan core.AsyncErrors)
 	redisRepo := core.NewRedisRepo(rdc, cerr)
