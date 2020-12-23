@@ -4,6 +4,7 @@ import (
 	"bytes"
 	context "context"
 	"fmt"
+	"html"
 	"math"
 	"net"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto"
 	log "github.com/sirupsen/logrus"
@@ -28,7 +30,7 @@ const (
 
 	YT_DOWNLOAD_CMD = "youtube-dl -x --audio-format %s --prefer-ffmpeg --default-search \"ytsearch\" \"%s\""
 
-	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args '-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
+	YT_DOWNLOAD_METADATA_ARGS = " --add-metadata --postprocessor-args $'-metadata artist=\"%s\" -metadata title=\"%s\" -metadata date=\"%s\" -metadata purl=\"%s\" -metadata track=\"%s\"'"
 
 	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
 
@@ -37,32 +39,39 @@ const (
 	// download path
 	// title
 	// song path
-	FFMPEG_THUMBNAIL_CMD = "ffmpeg -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s.mp3\" && rm \"%s\""
+	FFMPEG_THUMBNAIL_CMD = "ffmpeg -y -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s -(%s)-(%s).mp3\" && rm \"%s\""
 )
 
 type service struct {
 	redis Repository
+	cerr  chan AsyncErrors
 }
 
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest, wg *sync.WaitGroup)
-	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest)
+	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest, wg *sync.WaitGroup) (postprocessingcmd string)
+	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) (postprocessingcmds []string)
+	applyThumbnailsSerially(ctx context.Context, thumbscmds []string)
 }
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
 	log.WithFields(log.Fields{
 		"url":   req.Url,
-		"title": req.Title,
+		"title": html.EscapeString(req.Title),
 	}).Info("Received SongDownload Request")
 
-	query := fmt.Sprintf("%s - %s", req.Title, req.ArtistName)
+	query := fmt.Sprintf("%s - %s", req.Title, html.EscapeString(req.ArtistName))
 
 	// no need for this but maintaining it because wg is useful in the case of playlists
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	go s.offloadToYoutubeDL(ctx, "mp3", query, req, wg)
+
+	go func() {
+		thumbscmd := s.offloadToYoutubeDL(ctx, "mp3", query, req, wg)
+		s.applyThumbnailsSerially(ctx, []string{thumbscmd})
+	}()
+
 	res := &pb.SongMetaResponse{
 		Success: true,
 	}
@@ -81,6 +90,8 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			batchCount   int     = 1
 			totalBatches float64 = math.Ceil(float64(count) / float64(PLAYLIST_BATCH_SIZE))
 		)
+
+		dispatchTime := time.Now()
 		for i := 0; i < count; i += PLAYLIST_BATCH_SIZE {
 			var offset int = i + PLAYLIST_BATCH_SIZE
 			if offset >= count {
@@ -91,9 +102,19 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 				"batch_number":      batchCount,
 				"total_batches":     totalBatches,
 			}).Info("Playlist Batch Execution")
-			s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
+			results := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
+			// TODO: update redis
+			s.applyThumbnailsSerially(ctx, results)
 			batchCount++
 		}
+
+		log.WithFields(log.Fields{
+			"total_songs_count": count,
+			"total_batches":     totalBatches,
+			"batch_size":        PLAYLIST_BATCH_SIZE,
+			"time_taken":        time.Since(dispatchTime).Minutes(),
+		}).Info("Download Successful")
+
 	}(count)
 
 	res := &pb.PlaylistMetaResponse{
@@ -106,18 +127,25 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	format string,
 	query string,
 	songmeta *pb.SongMetaRequest,
-	wg *sync.WaitGroup) {
+	wg *sync.WaitGroup) (postprocessingcmd string) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 
-	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, songmeta.ArtistName, songmeta.Title, songmeta.Date, songmeta.Url, string(songmeta.Track))
+	artistName := html.EscapeString(songmeta.ArtistName)
+	songTitle := html.EscapeString(songmeta.Title)
+	albumName := html.EscapeString(songmeta.AlbumName)
+
+	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, artistName, songTitle, songmeta.Date, songmeta.Url, string(songmeta.Track))
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
-	cmd := exec.Command("sh", "-c", downloadcommand)
+	cmd := exec.CommandContext(ctx, "sh", "-c", downloadcommand)
 
 	var out bytes.Buffer
+	var serr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &serr
 	if err := cmd.Start(); err != nil {
+		s.cerr <- NewRepoError("Error Queuing Job", err, SRC_YTDL, downloadcommand)
 		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
@@ -126,6 +154,8 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_QUEUED)
 
 	if err := cmd.Wait(); err != nil {
+		fmt.Println(serr.String())
+		s.cerr <- NewRepoError("Error Executing Job", err, SRC_YTDL, downloadcommand)
 		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
@@ -137,52 +167,71 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	}).Info("Download Completed")
 
 	// apply thumbnail
+
 	logs := strings.Split(out.String(), "\n")
+	// TODO: prevent panic
 	dwpath := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")[1]
 	dwpath = dwpath[:len(dwpath)-1]
 
-	thumbscommand := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songmeta.Title, dwpath)
-	cmd = exec.Command("sh", "-c", thumbscommand)
+	// thumbnail command
+	postprocessingcmd = fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
 
-	if err := cmd.Start(); err != nil {
-		wg.Done()
-		return
-	}
-	if err := cmd.Wait(); err != nil {
-		wg.Done()
-		return
-	}
-	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_FINISHED)
-	log.WithFields(log.Fields{
-		"song": songmeta.Title,
-	}).Info("Thumbnail Applied")
 	wg.Done()
+	return postprocessingcmd
 }
 
-func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) {
+func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) (postprocessingcmds []string) {
 
 	// to see when all the songs of the current batch are downloaded
+	batchSize := len(slice)
 	songWg := &sync.WaitGroup{}
-	songWg.Add(len(slice))
+	songWg.Add(batchSize)
+
+	cmdchan := make(chan string, batchSize)
 
 	for _, v := range slice {
 		query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
-		go s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
+		go func(v *pb.SongMetaRequest) {
+			cmdchan <- s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
+		}(v)
 	}
 
 	// to maintain atomicity from other batches so that no batch can start executing once this is done
 	// wait till all the songs in the current batch are downloaded, then mark the current batch as done
 	songWg.Wait()
+	for i := 0; i < batchSize; i++ {
+		postprocessingcmds = append(postprocessingcmds, <-cmdchan)
+	}
+	return postprocessingcmds
 }
 
-func Register(rdc Repository) error {
+// ffmpeg encoding with thumbnail is best done serially
+// after all the songs are downloaded
+func (s *service) applyThumbnailsSerially(ctx context.Context, thumbscmds []string) {
+
+	log.Infof("Queuing %d thumbnail jobs", len(thumbscmds))
+	command := strings.Join(thumbscmds, ";")
+	cmd := exec.CommandContext(ctx, "sh", "-c", command)
+
+	if err := cmd.Start(); err != nil {
+		s.cerr <- NewRepoError("Error Queuing Thumbnail Job", err, SRC_YTDL, thumbscmds)
+		return
+	}
+	if err := cmd.Wait(); err != nil {
+		s.cerr <- NewRepoError("Error Executing Thumbnail Job", err, SRC_YTDL, thumbscmds)
+		return
+	}
+	log.Info("Thumbnails Applied")
+}
+
+func Register(rdc Repository, cerr chan AsyncErrors) error {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 	srv := grpc.NewServer()
-	pb.RegisterFeedMetaServer(srv, &service{rdc})
+	pb.RegisterFeedMetaServer(srv, &service{rdc, cerr})
 	log.WithFields(log.Fields{
 		"grpc_server": addr,
 	}).Info("Started gRPC server")

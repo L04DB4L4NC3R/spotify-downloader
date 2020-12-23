@@ -4,6 +4,7 @@ type sources string
 
 const (
 	SRC_REDIS sources = "REDIS"
+	SRC_YTDL  sources = "YOUTUBE_DL"
 )
 
 type AsyncErrors interface {

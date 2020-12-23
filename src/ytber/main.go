@@ -66,10 +66,11 @@ func main() {
 
 	cerr := make(chan pkg.AsyncErrors)
 	redisRepo := pkg.NewRedisRepo(rdc, cerr)
+
 	go globalChannelPool(cerr)
 	cleanup(cerr)
 
-	if err := pkg.Register(redisRepo); err != nil {
+	if err := pkg.Register(redisRepo, cerr); err != nil {
 		log.Fatal(err)
 	}
 }
