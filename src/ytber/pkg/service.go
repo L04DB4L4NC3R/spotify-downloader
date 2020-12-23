@@ -89,6 +89,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 		var (
 			batchCount   int     = 1
 			totalBatches float64 = math.Ceil(float64(count) / float64(PLAYLIST_BATCH_SIZE))
+			cmds         []string
 		)
 
 		dispatchTime := time.Now()
@@ -103,8 +104,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 				"total_batches":     totalBatches,
 			}).Info("Playlist Batch Execution")
 			results := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
-			// TODO: update redis
-			s.applyThumbnailsSerially(ctx, results)
+			cmds = append(cmds, results...)
 			batchCount++
 		}
 
@@ -114,6 +114,9 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			"batch_size":        PLAYLIST_BATCH_SIZE,
 			"time_taken":        time.Since(dispatchTime).Minutes(),
 		}).Info("Download Successful")
+
+		// TODO: update redis
+		s.applyThumbnailsSerially(ctx, cmds)
 
 	}(count)
 
