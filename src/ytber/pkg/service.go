@@ -138,7 +138,8 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, artistName, songTitle, songmeta.Date, songmeta.Url, string(songmeta.Track))
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
-	cmd := exec.CommandContext(ctx, "sh", "-c", downloadcommand)
+	// TODO: use CommandContext
+	cmd := exec.Command("sh", "-c", downloadcommand)
 
 	var out bytes.Buffer
 	var serr bytes.Buffer
@@ -211,7 +212,8 @@ func (s *service) applyThumbnailsSerially(ctx context.Context, thumbscmds []stri
 
 	log.Infof("Queuing %d thumbnail jobs", len(thumbscmds))
 	command := strings.Join(thumbscmds, ";")
-	cmd := exec.CommandContext(ctx, "sh", "-c", command)
+	// TODO: use CommandContext
+	cmd := exec.Command("sh", "-c", command)
 
 	if err := cmd.Start(); err != nil {
 		s.cerr <- NewRepoError("Error Queuing Thumbnail Job", err, SRC_YTDL, thumbscmds)
