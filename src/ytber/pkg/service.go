@@ -51,7 +51,7 @@ type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
 	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest, wg *sync.WaitGroup) (postprocessingcmd string)
-	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) (postprocessingcmds []string)
+	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest, fetchChan chan string) (postprocessingcmds []string)
 	applyThumbnailsSerially(ctx context.Context, thumbscmds []string)
 }
 
@@ -92,7 +92,11 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			cmds         []string
 		)
 
+		fetchChan := make(chan string, PLAYLIST_BATCH_SIZE)
+		defer close(fetchChan)
+
 		dispatchTime := time.Now()
+
 		for i := 0; i < count; i += PLAYLIST_BATCH_SIZE {
 			var offset int = i + PLAYLIST_BATCH_SIZE
 			if offset >= count {
@@ -103,7 +107,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 				"batch_number":      batchCount,
 				"total_batches":     totalBatches,
 			}).Info("Playlist Batch Execution")
-			results := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset])
+			results := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset], fetchChan)
 			cmds = append(cmds, results...)
 			batchCount++
 		}
@@ -184,19 +188,17 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	return postprocessingcmd
 }
 
-func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest) (postprocessingcmds []string) {
+func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest, fetchChan chan string) (postprocessingcmds []string) {
 
 	// to see when all the songs of the current batch are downloaded
 	batchSize := len(slice)
 	songWg := &sync.WaitGroup{}
 	songWg.Add(batchSize)
 
-	cmdchan := make(chan string, batchSize)
-
 	for _, v := range slice {
 		query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
 		go func(v *pb.SongMetaRequest) {
-			cmdchan <- s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
+			fetchChan <- s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
 		}(v)
 	}
 
@@ -204,7 +206,7 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 	// wait till all the songs in the current batch are downloaded, then mark the current batch as done
 	songWg.Wait()
 	for i := 0; i < batchSize; i++ {
-		postprocessingcmds = append(postprocessingcmds, <-cmdchan)
+		postprocessingcmds = append(postprocessingcmds, <-fetchChan)
 	}
 	return postprocessingcmds
 }
