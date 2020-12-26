@@ -3,7 +3,7 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 ## Core Features
 
-- [X] Song download on a URL basis
+- [X] Track download on a URL basis
 - [X] Entire playlist download
 - [X] Apply metadata on downloaded songs
 - [X] Entire album download
@@ -68,6 +68,8 @@ chmod +x ./scripts/docker-setup.sh
 | Check Song Download Progress | /status/song/{id}/ |
 | Check Playlist Download Progress | /status/playlist/{id}/ |
 | Check Album Download Progress | /status/album/{id}/ |
+
+Note that the `{id}` mentioned here is the resource ID you get from spotify (from a track, album or playlist URL).
 
 ## Disclaimer
 Read the [disclaimer](disclaimer.md) before using this software.
