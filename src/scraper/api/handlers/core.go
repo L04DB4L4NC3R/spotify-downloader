@@ -16,12 +16,24 @@ type handler struct {
 func (h *handler) ViewPlaylistMeta() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistMeta, err := h.service.FetchPlaylistMeta(vars["id"])
+		playlistMeta, err := h.service.FetchPlaylistMeta(core.RESOURCE_PLAYLIST, vars["id"])
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
 		}
-		views.Fill(w, "Playlist Metadata", playlistMeta, http.StatusAccepted)
+		views.Fill(w, "Playlist Metadata", playlistMeta, http.StatusOK)
+	})
+}
+
+func (h *handler) ViewAlbumMeta() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistMeta, err := h.service.FetchPlaylistMeta(core.RESOURCE_ALBUM, vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Album Metadata", playlistMeta, http.StatusOK)
 	})
 }
 
@@ -61,7 +73,7 @@ func (h *handler) SyncPlaylist() http.Handler {
 func (h *handler) DownloadPlaylist() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, err := h.service.PlaylistDownload(vars["id"], nil)
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_PLAYLIST, vars["id"], nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
@@ -69,6 +81,20 @@ func (h *handler) DownloadPlaylist() http.Handler {
 		// Fireforget
 		// gRPC transport is handled in the service
 		views.Fill(w, "Playlist Metadata", playlistmetas, http.StatusAccepted)
+	})
+}
+
+func (h *handler) DownloadAlbum() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_ALBUM, vars["id"], nil)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		// Fireforget
+		// gRPC transport is handled in the service
+		views.Fill(w, "Album Metadata", playlistmetas, http.StatusAccepted)
 	})
 }
 

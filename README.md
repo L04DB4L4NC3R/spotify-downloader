@@ -6,9 +6,10 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 - [X] Song download on a URL basis
 - [X] Entire playlist download
 - [X] Apply metadata on downloaded songs
-- [ ] Entire album download
-- [ ] Pause and resume download ability
+- [X] Entire album download
+- [ ] Artist top songs download
 - [ ] Album sync daemon (CRON or need basis)
+
 - [ ] Web-UI for bulk process status handling
 - [ ] Streaming music playback
 

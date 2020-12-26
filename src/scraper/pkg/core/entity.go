@@ -21,8 +21,23 @@ type SpotifyPlaylistUnmarshalStruct struct {
 	Items []ItemSpotifyHelper `json:"items"`
 }
 
+type SpotifyAlbumUnmarshalStruct struct {
+	Name   string                  `json:"name"`
+	Images []ImageSpotifyHelper    `json:"images"`
+	Date   string                  `json:"release_date"`
+	Tracks SpotifyAlbumTrackStruct `json:"tracks"`
+}
+
 type ItemSpotifyHelper struct {
 	Track SpotifyUnmarshalStruct `json:"track"`
+}
+
+type AlbumItemSpotifyHelper struct {
+	AlbumSpotifyHelper
+	Name       string `json:"name"`
+	DurationMs int    `json:"duration_ms"`
+	Track      int    `json:"track_number"`
+	ID         string `json:"id"`
 }
 
 type SpotifyUnmarshalStruct struct {
@@ -33,8 +48,12 @@ type SpotifyUnmarshalStruct struct {
 	Album      AlbumSpotifyHelper `json:"album"`
 }
 
+type SpotifyAlbumTrackStruct struct {
+	Items []AlbumItemSpotifyHelper `json:"items"`
+}
+
 type AlbumSpotifyHelper struct {
-	ID          string                `json"id"`
+	ID          string                `json:"id"`
 	Artists     []ArtistSpotifyHelper `json:"artists"`
 	Images      []ImageSpotifyHelper  `json:"images"`
 	Name        string                `json:"name"`

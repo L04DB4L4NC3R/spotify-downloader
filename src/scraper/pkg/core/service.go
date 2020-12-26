@@ -22,6 +22,10 @@ const (
 	SPOT_ALBUM_URL    = "https://open.spotify.com/album/"
 	SPOT_ARTIST_URL   = "https://open.spotify.com/artist/"
 	SPOT_PLAYLIST_URL = "https://open.spotify.com/playlist/"
+
+	RESOURCE_PLAYLIST = "playlists"
+	RESOURCE_SONG     = "tracks"
+	RESOURCE_ALBUM    = "albums"
 )
 
 const (
@@ -32,7 +36,7 @@ const (
 type Service interface {
 	// modules
 	// takes albumn link and gives a link of song URLs
-	FetchPlaylistMeta(id string) (songmetas []SongMeta, err error)
+	FetchPlaylistMeta(resource string, id string) (songmetas []SongMeta, err error)
 	// takes song URL and gives its metadata
 	FetchSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
@@ -41,7 +45,7 @@ type Service interface {
 
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
-	PlaylistDownload(id string, path *string) ([]SongMeta, error)
+	PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error)
 	PlaylistSync(url string, path *string) error
 }
 
@@ -61,21 +65,54 @@ func NewService(r Repository, s *spotify.Spotify, feedMetaTransporter pb.Service
 
 // modules
 // takes albumn link and gives a link of song URLs
-func (s *service) FetchPlaylistMeta(id string) (songmetas []SongMeta, err error) {
+func (s *service) FetchPlaylistMeta(resource string, id string) (songmetas []SongMeta, err error) {
 
 	var (
-		wg   sync.WaitGroup
-		errs []error
+		wg    sync.WaitGroup
+		errs  []error
+		query string
 	)
+
+	// if resource is album then no pagination (album API doesn't support pagination)
+	if resource == RESOURCE_ALBUM {
+		query = resource + "/%s"
+		result, errs := s.spotify.Get(query, nil, id)
+		if len(errs) != 0 {
+			return nil, errs[0]
+		}
+		//log.Println(string(result))
+		obj := SpotifyAlbumUnmarshalStruct{}
+		err = json.Unmarshal(result, &obj)
+		if err != nil {
+			return nil, err
+		}
+		for _, val := range obj.Tracks.Items {
+			songmetas = append(songmetas, SongMeta{
+				Title:      val.Name,
+				Url:        SPOT_TRACK_URL + val.ID,
+				ArtistLink: SPOT_ARTIST_URL + val.Artists[0].ID,
+				ArtistName: val.Artists[0].Name,
+				AlbumName:  obj.Name,
+				AlbumUrl:   SPOT_ALBUM_URL + id,
+				Date:       obj.Date,
+				Duration:   &val.DurationMs,
+				Track:      &val.Track,
+				SongID:     val.ID,
+				Thumbnail:  obj.Images[0].Url,
+			})
+		}
+		return songmetas, nil
+	}
 
 	// if 1000 is the limit and spotify api limit is 100 then call 10 goroutines
 	wg.Add(PLAYLIST_BATCH_LIMIT/PLAYLIST_BATCH_SIZE + 1)
+	query = resource + "/%s/tracks?limit=%s&offset=%s"
 	for offset := 0; offset <= PLAYLIST_BATCH_LIMIT; offset += 100 {
 
 		// max songs that can be returned in a playlist is 100
 		go func(offset string) {
 
-			result, errarr := s.spotify.Get("playlists/%s/tracks?limit=%s&offset=%s", nil, id, "100", offset)
+			result, errarr := s.spotify.Get(query, nil, id, "100", offset)
 			if len(errarr) != 0 {
 				errs = append(errs, errarr...)
 				wg.Done()
@@ -211,12 +248,12 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 
-func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, error) {
-	songmetas, err := s.FetchPlaylistMeta(id)
+func (s *service) PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error) {
+	songmetas, err := s.FetchPlaylistMeta(resource, id)
 	if err != nil {
 		return nil, err
 	}
-	// go s.redis.SaveMetaArray("playlist", id, songmetas, STATUS_META_FED)
+	go s.redis.SaveMetaArray(resource, id, songmetas, STATUS_META_FED)
 	return songmetas, s.queuePlaylistDownloadMessenger(songmetas, path)
 }
 

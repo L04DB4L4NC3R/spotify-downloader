@@ -15,8 +15,10 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 	// queue downloads
 	r.Handle("/song/{id}/", coreHandler.DownloadSong())
 	r.Handle("/playlist/{id}/", coreHandler.DownloadPlaylist())
+	r.Handle("/album/{id}/", coreHandler.DownloadAlbum())
 
 	// fetch just the metadata
 	r.Handle("/meta/song/{id}/", coreHandler.ViewSongMeta())
 	r.Handle("/meta/playlist/{id}/", coreHandler.ViewPlaylistMeta())
+	r.Handle("/meta/album/{id}/", coreHandler.ViewAlbumMeta())
 }
