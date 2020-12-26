@@ -32,9 +32,9 @@ const (
 type Service interface {
 	// modules
 	// takes albumn link and gives a link of song URLs
-	fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err error)
+	FetchPlaylistMeta(id string) (songmetas []SongMeta, err error)
 	// takes song URL and gives its metadata
-	scrapeSongMeta(id string) (*SongMeta, error)
+	FetchSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
 	queueSongDownloadMessenger(_ *SongMeta, path *string) error
 	queuePlaylistDownloadMessenger(songmetas []SongMeta, path *string) error
@@ -61,7 +61,7 @@ func NewService(r Repository, s *spotify.Spotify, feedMetaTransporter pb.Service
 
 // modules
 // takes albumn link and gives a link of song URLs
-func (s *service) fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err error) {
+func (s *service) FetchPlaylistMeta(id string) (songmetas []SongMeta, err error) {
 
 	var (
 		wg   sync.WaitGroup
@@ -118,7 +118,7 @@ func (s *service) fetchSongsFromPlaylist(id string) (songmetas []SongMeta, err e
 }
 
 // takes song URL and gives its metadata
-func (s *service) scrapeSongMeta(id string) (*SongMeta, error) {
+func (s *service) FetchSongMeta(id string) (*SongMeta, error) {
 	result, errs := s.spotify.Get("tracks/%s", nil, id)
 	if len(errs) != 0 {
 		return nil, errs[0]
@@ -202,7 +202,7 @@ func (s *service) queuePlaylistDownloadMessenger(songmetas []SongMeta, path *str
 
 // core services
 func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
-	songmeta, err := s.scrapeSongMeta(id)
+	songmeta, err := s.FetchSongMeta(id)
 	if err != nil {
 		return songmeta, err
 	}
@@ -212,7 +212,7 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 }
 
 func (s *service) PlaylistDownload(id string, path *string) ([]SongMeta, error) {
-	songmetas, err := s.fetchSongsFromPlaylist(id)
+	songmetas, err := s.FetchPlaylistMeta(id)
 	if err != nil {
 		return nil, err
 	}

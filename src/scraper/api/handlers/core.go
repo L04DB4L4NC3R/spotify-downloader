@@ -14,11 +14,27 @@ type handler struct {
 }
 
 func (h *handler) ViewPlaylistMeta() http.Handler {
-	panic("not implemented") // TODO: Implement
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistMeta, err := h.service.FetchPlaylistMeta(vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Playlist Metadata", playlistMeta, http.StatusAccepted)
+	})
 }
 
 func (h *handler) ViewSongMeta() http.Handler {
-	panic("not implemented") // TODO: Implement
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		songMeta, err := h.service.FetchSongMeta(vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Song Metadata", songMeta, http.StatusAccepted)
+	})
 }
 
 func (h *handler) ViewProgressOfPlaylistDownload() http.Handler {

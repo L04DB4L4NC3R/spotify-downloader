@@ -9,7 +9,14 @@ import (
 func RegisterHandler(r *mux.Router, svc core.Service) {
 	coreHandler := NewHandler(r, svc)
 	middleware.RegisterMiddlewares(r)
+
 	r.Handle("/ping", coreHandler.Health())
+
+	// queue downloads
 	r.Handle("/song/{id}/", coreHandler.DownloadSong())
 	r.Handle("/playlist/{id}/", coreHandler.DownloadPlaylist())
+
+	// fetch just the metadata
+	r.Handle("/meta/song/{id}/", coreHandler.ViewSongMeta())
+	r.Handle("/meta/playlist/{id}/", coreHandler.ViewPlaylistMeta())
 }
