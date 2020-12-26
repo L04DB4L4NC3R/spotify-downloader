@@ -41,7 +41,7 @@ type Service interface {
 	FetchSongMeta(id string) (*SongMeta, error)
 	// Send a gRPC call to the ytber backend for further processing
 	queueSongDownloadMessenger(_ *SongMeta, path *string) error
-	queuePlaylistDownloadMessenger(songmetas []SongMeta, path *string) error
+	queuePlaylistDownloadMessenger(resource string, id string, songmetas []SongMeta, path *string) error
 
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
@@ -212,7 +212,7 @@ func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) e
 	return nil
 }
 
-func (s *service) queuePlaylistDownloadMessenger(songmetas []SongMeta, path *string) error {
+func (s *service) queuePlaylistDownloadMessenger(resource string, id string, songmetas []SongMeta, path *string) error {
 	metas := s.feedMetaTransporter.NewPlaylistTransportStruct()
 	for _, songmeta := range songmetas {
 
@@ -230,8 +230,11 @@ func (s *service) queuePlaylistDownloadMessenger(songmetas []SongMeta, path *str
 			uint32(*songmeta.Track),
 			songmeta.Title,
 		)
-		metas = append(metas, *data)
+		metas.Songs = append(metas.Songs, *data)
 	}
+
+	metas.Type = resource
+	metas.ID = id
 
 	_, err := s.feedMetaTransporter.SendPlaylistMeta(metas)
 	if err != nil {
@@ -258,7 +261,7 @@ func (s *service) PlaylistDownload(resource string, id string, path *string) ([]
 		return nil, err
 	}
 	go s.redis.SaveMetaArray(resource, id, songmetas, STATUS_META_FED)
-	return songmetas, s.queuePlaylistDownloadMessenger(songmetas, path)
+	return songmetas, s.queuePlaylistDownloadMessenger(resource, id, songmetas, path)
 }
 
 func (s *service) PlaylistSync(url string, path *string) error {
@@ -266,7 +269,7 @@ func (s *service) PlaylistSync(url string, path *string) error {
 }
 
 func (s *service) CheckSongStatus(id string) (string, error) {
-	return s.redis.GetStatus("song", id)
+	return s.redis.GetStatus(RESOURCE_SONG, id)
 }
 
 func (s *service) CheckPlaylistStatus(resource string, id string) (string, error) {

@@ -8,6 +8,8 @@ option go_package = "github.com/L04DB4L4NC3R/spotify-downloader/ytber/proto;pb";
 
 message PlaylistMetaRequest {
 	repeated song.SongMetaRequest songs = 1;
+	string resource_id = 2;
+	string type = 3;
 }
 
 message PlaylistMetaResponse {

@@ -7,6 +7,17 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+const (
+	PLAYLIST uint = iota
+	ALBUM
+)
+
+type playlistTransportStruct struct {
+	Songs []songMetaStruct
+	ID    string
+	Type  string
+}
+
 type songMetaStruct struct {
 	Url        string
 	SongId     string

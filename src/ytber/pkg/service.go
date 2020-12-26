@@ -23,8 +23,8 @@ const (
 	STATUS_META_FED     = "FED"
 	STATUS_DWN_QUEUED   = "QUEUED"
 	STATUS_DWN_FAILED   = "FAILED"
-	STATUS_DWN_COMPLETE = "COMPLETED"
-	STATUS_FINISHED     = "FINISHED"
+	STATUS_DWN_COMPLETE = "COMPLETED" // song downloaded (before thumbnail application)
+	STATUS_FINISHED     = "FINISHED"  // thumbnail applied
 
 	YT_BASE_URL = "https://youtube.com/watch?v="
 
@@ -40,6 +40,10 @@ const (
 	// title
 	// song path
 	FFMPEG_THUMBNAIL_CMD = "ffmpeg -y -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s -(%s)-(%s).mp3\" && rm \"%s\""
+
+	RESOURCE_PLAYLIST = "playlists"
+	RESOURCE_SONG     = "tracks"
+	RESOURCE_ALBUM    = "albums"
 )
 
 type service struct {
@@ -70,6 +74,7 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 	go func() {
 		thumbscmd := s.offloadToYoutubeDL(ctx, "mp3", query, req, wg)
 		s.applyThumbnailsSerially(ctx, []string{thumbscmd})
+		s.redis.UpdateStatus(RESOURCE_SONG, req.SongId, STATUS_FINISHED)
 	}()
 
 	res := &pb.SongMetaResponse{
@@ -118,9 +123,9 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			"batch_size":        PLAYLIST_BATCH_SIZE,
 			"time_taken":        time.Since(dispatchTime).Minutes(),
 		}).Info("Download Successful")
-
-		// TODO: update redis
+		s.redis.UpdateStatus(req.Type, req.ResourceId, STATUS_DWN_COMPLETE)
 		s.applyThumbnailsSerially(ctx, cmds)
+		s.redis.UpdateStatus(req.Type, req.ResourceId, STATUS_FINISHED)
 
 	}(count)
 
@@ -154,17 +159,17 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	cmd.Stderr = &serr
 	if err := cmd.Start(); err != nil {
 		s.cerr <- NewRepoError("Error Queuing Job", err, SRC_YTDL, downloadcommand)
-		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
+		go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
 	}
 
-	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_QUEUED)
+	go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_QUEUED)
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Println(serr.String())
 		s.cerr <- NewRepoError("Error Executing Job", err, SRC_YTDL, downloadcommand)
-		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_FAILED)
+		go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_FAILED)
 		wg.Done()
 		return
 	}

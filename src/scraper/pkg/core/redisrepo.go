@@ -26,8 +26,8 @@ func (r *repo) SaveMeta(songmeta *SongMeta, status string) {
 		ctx context.Context = context.Background()
 		err error
 	)
-	metakey := "song:meta:" + songmeta.SongID
-	statuskey := "song:status:" + songmeta.SongID
+	metakey := RESOURCE_SONG + ":meta:" + songmeta.SongID
+	statuskey := RESOURCE_SONG + ":status:" + songmeta.SongID
 	songmetabytes, _ := json.Marshal(songmeta)
 	if err = r.Rdc.Set(ctx, metakey, string(songmetabytes), 0).Err(); err != nil {
 		errobj := NewRepoError("Error saving meta", err, SRC_REDIS, metakey)
