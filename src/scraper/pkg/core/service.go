@@ -47,6 +47,9 @@ type Service interface {
 	SongDownload(id string, path *string) (*SongMeta, error)
 	PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error)
 	PlaylistSync(url string, path *string) error
+
+	// status tracking
+	CheckSongStatus(id string) (string, error)
 }
 
 type service struct {
@@ -259,4 +262,8 @@ func (s *service) PlaylistDownload(resource string, id string, path *string) ([]
 
 func (s *service) PlaylistSync(url string, path *string) error {
 	panic("not implemented") // TODO: Implement
+}
+
+func (s *service) CheckSongStatus(id string) (string, error) {
+	return s.redis.GetStatus("song", id)
 }

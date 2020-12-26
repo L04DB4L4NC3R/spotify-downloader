@@ -7,8 +7,8 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 - [X] Entire playlist download
 - [X] Apply metadata on downloaded songs
 - [X] Entire album download
-- [ ] Artist top songs download
-- [ ] Album sync daemon (CRON or need basis)
+- [ ] Download Sync Daemon (checks redis before downloading a song)
+- [ ] Parallel encoding of thumbnails
 
 - [ ] Web-UI for bulk process status handling
 - [ ] Streaming music playback
@@ -51,6 +51,19 @@ chmod +x ./scripts/docker-setup.sh
 ```sh
 ./scripts/docker-setup.sh
 ```
+
+## Endpoints
+
+| Function | Route |
+|:--------:|:-----:|
+| Check service health | /ping/ |
+| Download Song | /song/{id}/ |
+| Download Playlist | /playlist/{id}/ |
+| Download Album | /album/{id}/ |
+| View Song Metadata | /meta/song/{id}/ |
+| View Playlist Metadata | /meta/playlist/{id}/ |
+| View Album Metadata | /meta/album/{id}/ |
+| Check Song Download Progress | /status/song/{id}/ |
 
 ## Disclaimer
 Read the [disclaimer](disclaimer.md) before using this software.

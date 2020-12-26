@@ -17,7 +17,7 @@ type Handler interface {
 	ResumePlaylistDownload() http.Handler
 
 	// download progress trackers
-	ViewProgressOfPlaylistDownload() http.Handler
+	ViewSongProgress() http.Handler
 
 	// informational endpoints
 	ViewPlaylistMeta() http.Handler

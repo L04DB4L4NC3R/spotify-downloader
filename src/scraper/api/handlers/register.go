@@ -10,7 +10,7 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 	coreHandler := NewHandler(r, svc)
 	middleware.RegisterMiddlewares(r)
 
-	r.Handle("/ping", coreHandler.Health())
+	r.Handle("/ping/", coreHandler.Health())
 
 	// queue downloads
 	r.Handle("/song/{id}/", coreHandler.DownloadSong())
@@ -21,4 +21,7 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 	r.Handle("/meta/song/{id}/", coreHandler.ViewSongMeta())
 	r.Handle("/meta/playlist/{id}/", coreHandler.ViewPlaylistMeta())
 	r.Handle("/meta/album/{id}/", coreHandler.ViewAlbumMeta())
+
+	// status info
+	r.Handle("/status/song/{id}/", coreHandler.ViewSongProgress())
 }
