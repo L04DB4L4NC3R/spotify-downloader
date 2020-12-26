@@ -182,7 +182,10 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	// apply thumbnail
 
 	logs := strings.Split(out.String(), "\n")
-	// TODO: prevent panic
+	// Prevent panic in the case of faulty logs
+	if len(logs) < 4 {
+		return "echo skip thumbnail application"
+	}
 	dwpath := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")[1]
 	dwpath = dwpath[:len(dwpath)-1]
 
