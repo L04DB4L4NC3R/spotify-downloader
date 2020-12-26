@@ -24,6 +24,8 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 * Generate protocol buffer code (requires protoc & gRPC installation)
 
 ```sh
+go get -u -v github.com/golang/protobuf/proto
+go get -u -v github.com/golang/protobuf/protoc-gen-go
 make build-proto
 ```
 
