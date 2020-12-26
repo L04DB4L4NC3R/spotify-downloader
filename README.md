@@ -1,7 +1,7 @@
 # spotify-downloader
 Download songs, playlists and albums, or sync in to your favourite tunes
 
-## Features
+## Core Features
 
 - [X] Song download on a URL basis
 - [X] Entire playlist download
@@ -10,6 +10,8 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 - [ ] Download Sync Daemon (checks redis before downloading a song)
 - [ ] Parallel encoding of thumbnails
 
+## UI Features
+
 - [ ] Web-UI for bulk process status handling
 - [ ] Streaming music playback
 
@@ -17,7 +19,7 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 
 * Install `youtube-dl` and `ffmpeg`
 
-* Configure secrets: Copy `config/local.env.sample` to `config/local.env` and fill the secrets
+* Configure secrets: Copy `config/secret.env.sample` to `config/secret.env` and fill the secrets
 
 * Generate protocol buffer code (requires protoc & gRPC installation)
 
@@ -69,3 +71,6 @@ chmod +x ./scripts/docker-setup.sh
 
 ## Disclaimer
 Read the [disclaimer](disclaimer.md) before using this software.
+
+## Contibutions Welcome
+Note that this repo is just the core backend of the service. **UI contributions are needed**. All contributions are welcome. Just fork and make a PR. If you are making a UI, create a new directory called `src/ui`.
