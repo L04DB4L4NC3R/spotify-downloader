@@ -18,6 +18,8 @@ type Handler interface {
 
 	// download progress trackers
 	ViewSongProgress() http.Handler
+	ViewPlaylistProgress() http.Handler
+	ViewAlbumProgress() http.Handler
 
 	// informational endpoints
 	ViewPlaylistMeta() http.Handler

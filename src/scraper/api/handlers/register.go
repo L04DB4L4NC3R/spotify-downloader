@@ -24,4 +24,6 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 
 	// status info
 	r.Handle("/status/song/{id}/", coreHandler.ViewSongProgress())
+	r.Handle("/status/playlist/{id}/", coreHandler.ViewPlaylistProgress())
+	r.Handle("/status/album/{id}/", coreHandler.ViewAlbumProgress())
 }

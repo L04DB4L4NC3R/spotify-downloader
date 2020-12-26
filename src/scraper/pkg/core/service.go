@@ -50,6 +50,7 @@ type Service interface {
 
 	// status tracking
 	CheckSongStatus(id string) (string, error)
+	CheckPlaylistStatus(resource string, id string) (string, error)
 }
 
 type service struct {
@@ -266,4 +267,8 @@ func (s *service) PlaylistSync(url string, path *string) error {
 
 func (s *service) CheckSongStatus(id string) (string, error) {
 	return s.redis.GetStatus("song", id)
+}
+
+func (s *service) CheckPlaylistStatus(resource string, id string) (string, error) {
+	return s.redis.GetStatus(resource, id)
 }

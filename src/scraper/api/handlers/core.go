@@ -57,7 +57,31 @@ func (h *handler) ViewSongProgress() http.Handler {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
 		}
-		views.Fill(w, "Song Metadata", status, http.StatusOK)
+		views.Fill(w, "Song Progress", status, http.StatusOK)
+	})
+}
+
+func (h *handler) ViewPlaylistProgress() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		status, err := h.service.CheckPlaylistStatus(core.RESOURCE_PLAYLIST, vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Playlist Progress", status, http.StatusOK)
+	})
+}
+
+func (h *handler) ViewAlbumProgress() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		status, err := h.service.CheckPlaylistStatus(core.RESOURCE_ALBUM, vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Album Progress", status, http.StatusOK)
 	})
 }
 

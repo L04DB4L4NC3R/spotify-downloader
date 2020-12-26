@@ -64,6 +64,8 @@ chmod +x ./scripts/docker-setup.sh
 | View Playlist Metadata | /meta/playlist/{id}/ |
 | View Album Metadata | /meta/album/{id}/ |
 | Check Song Download Progress | /status/song/{id}/ |
+| Check Playlist Download Progress | /status/playlist/{id}/ |
+| Check Album Download Progress | /status/album/{id}/ |
 
 ## Disclaimer
 Read the [disclaimer](disclaimer.md) before using this software.
