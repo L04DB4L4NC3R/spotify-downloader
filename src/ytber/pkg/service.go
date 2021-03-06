@@ -44,6 +44,9 @@ const (
 	RESOURCE_PLAYLIST = "playlists"
 	RESOURCE_SONG     = "tracks"
 	RESOURCE_ALBUM    = "albums"
+
+	// in seconds
+	SONG_DOWNLOAD_TIMEOUT = 120
 )
 
 type service struct {
@@ -54,7 +57,7 @@ type service struct {
 type Service interface {
 	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
 	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest, wg *sync.WaitGroup) (postprocessingcmd string)
+	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest) (postprocessingcmd string)
 	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest, fetchChan chan string) (postprocessingcmds []string)
 	applyThumbnailsSerially(ctx context.Context, thumbscmds []string)
 }
@@ -67,12 +70,8 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 
 	query := fmt.Sprintf("%s - %s", req.Title, html.EscapeString(req.ArtistName))
 
-	// no need for this but maintaining it because wg is useful in the case of playlists
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-
 	go func() {
-		thumbscmd := s.offloadToYoutubeDL(ctx, "mp3", query, req, wg)
+		thumbscmd := s.offloadToYoutubeDL(ctx, "mp3", query, req)
 		s.applyThumbnailsSerially(ctx, []string{thumbscmd})
 		s.redis.UpdateStatus(RESOURCE_SONG, req.SongId, STATUS_FINISHED)
 	}()
@@ -87,7 +86,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	var count int = len(req.Songs)
 	log.WithFields(log.Fields{
 		"count": count,
-	}).Info("Received Playlist Download Request")
+	}).Info("received playlist download request")
 
 	go func(count int) {
 		PLAYLIST_BATCH_SIZE, _ := strconv.Atoi(os.Getenv("PLAYLIST_BATCH_SIZE"))
@@ -111,7 +110,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 				"total_songs_count": count,
 				"batch_number":      batchCount,
 				"total_batches":     totalBatches,
-			}).Info("Playlist Batch Execution")
+			}).Info("playlist batch execution")
 			results := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset], fetchChan)
 			cmds = append(cmds, results...)
 			batchCount++
@@ -132,20 +131,24 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 	res := &pb.PlaylistMetaResponse{
 		Success: true,
 	}
+
 	return res, nil
 }
 
-func (s *service) offloadToYoutubeDL(ctx context.Context,
+func (s *service) offloadToYoutubeDL(
+	ctx context.Context,
 	format string,
 	query string,
 	songmeta *pb.SongMetaRequest,
-	wg *sync.WaitGroup) (postprocessingcmd string) {
+) (postprocessingcmd string) {
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 
 	artistName := html.EscapeString(songmeta.ArtistName)
 	songTitle := html.EscapeString(songmeta.Title)
 	albumName := html.EscapeString(songmeta.AlbumName)
+
+	errcmd := fmt.Sprintf("echo error applying thumbnail to %s", songTitle)
 
 	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, artistName, songTitle, songmeta.Date, songmeta.Url, string(songmeta.Track))
 
@@ -160,40 +163,57 @@ func (s *service) offloadToYoutubeDL(ctx context.Context,
 	if err := cmd.Start(); err != nil {
 		s.cerr <- NewRepoError("Error Queuing Job", err, SRC_YTDL, downloadcommand)
 		go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_FAILED)
-		wg.Done()
-		return
+		return errcmd
 	}
 
 	go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_QUEUED)
 
-	if err := cmd.Wait(); err != nil {
-		fmt.Println(serr.String())
-		s.cerr <- NewRepoError("Error Executing Job", err, SRC_YTDL, downloadcommand)
-		go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_FAILED)
-		wg.Done()
-		return
+	done := make(chan error)
+	go func() { done <- cmd.Wait() }()
+
+	nctx, _ := context.WithTimeout(context.Background(), SONG_DOWNLOAD_TIMEOUT*time.Second)
+
+	select {
+	case <-nctx.Done():
+		s.cerr <- NewRepoError("Error Executing Job", nctx.Err(), SRC_YTDL, downloadcommand)
+		return errcmd
+	case err := <-done:
+		if err != nil {
+			s.cerr <- NewRepoError("Error Executing Job", err, SRC_YTDL, downloadcommand)
+			go s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_FAILED)
+			return errcmd
+		}
+		go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_COMPLETE)
+		log.WithFields(log.Fields{
+			"song": query,
+		}).Info("download completed")
+
+		// apply thumbnail
+
+		logs := strings.Split(out.String(), "\n")
+		// Prevent panic in the case of faulty logs
+		if len(logs) < 4 {
+			log.WithFields(log.Fields{
+				"song": songTitle,
+			}).Info("skipping thumbnail application")
+			return errcmd
+		}
+		dwpathi := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")
+		if len(dwpathi) < 2 {
+			log.WithFields(log.Fields{
+				"song": songTitle,
+			}).Info("skipping thumbnail application")
+			return errcmd
+		}
+
+		dwpath := dwpathi[1]
+		dwpath = dwpath[:len(dwpath)-1]
+
+		// thumbnail command
+		postprocessingcmd = fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
+
+		return postprocessingcmd
 	}
-
-	go s.redis.UpdateStatus("song", songmeta.SongId, STATUS_DWN_COMPLETE)
-	log.WithFields(log.Fields{
-		"song": query,
-	}).Info("Download Completed")
-
-	// apply thumbnail
-
-	logs := strings.Split(out.String(), "\n")
-	// Prevent panic in the case of faulty logs
-	if len(logs) < 4 {
-		return "echo skip thumbnail application"
-	}
-	dwpath := strings.Split(logs[len(logs)-3], "[ffmpeg] Adding metadata to '")[1]
-	dwpath = dwpath[:len(dwpath)-1]
-
-	// thumbnail command
-	postprocessingcmd = fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
-
-	wg.Done()
-	return postprocessingcmd
 }
 
 func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest, fetchChan chan string) (postprocessingcmds []string) {
@@ -206,12 +226,14 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 	for _, v := range slice {
 		query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
 		go func(v *pb.SongMetaRequest) {
-			fetchChan <- s.offloadToYoutubeDL(ctx, "mp3", query, v, songWg)
+			fetchChan <- s.offloadToYoutubeDL(ctx, "mp3", query, v)
+			songWg.Done()
 		}(v)
 	}
 
-	// to maintain atomicity from other batches so that no batch can start executing once this is done
-	// wait till all the songs in the current batch are downloaded, then mark the current batch as done
+	// to maintain atomicity in batches
+	// wait till all the songs in the current batch are downloaded
+	// then mark the current batch as done
 	songWg.Wait()
 	for i := 0; i < batchSize; i++ {
 		postprocessingcmds = append(postprocessingcmds, <-fetchChan)
