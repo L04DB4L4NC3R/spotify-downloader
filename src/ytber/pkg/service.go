@@ -176,6 +176,7 @@ func (s *service) offloadToYoutubeDL(
 	select {
 	case <-nctx.Done():
 		s.cerr <- NewRepoError("Error Executing Job", nctx.Err(), SRC_YTDL, downloadcommand)
+		cmd.Process.Kill()
 		return errcmd
 	case err := <-done:
 		if err != nil {
