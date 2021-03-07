@@ -43,12 +43,23 @@ const (
 	RESOURCE_SONG     = "tracks"
 	RESOURCE_ALBUM    = "albums"
 
-	SONG_DOWNLOAD_TIMEOUT         = time.Duration(2) * time.Minute
-	BATCH_DOWNLOAD_TIMEOUT        = time.Duration(5) * time.Minute
-	THUMBNAIL_APPLICATION_TIMEOUT = time.Duration(20) * time.Minute
-	SONG_DOWNLOAD_WAIT_DURATION   = time.Duration(10) * time.Second
-	RETRY_BACKOFF_TIME            = time.Duration(10) * time.Second
+	// after this, song download is cancelled
+	SONG_DOWNLOAD_TIMEOUT = time.Duration(2) * time.Minute
 
+	// after this, remaining songs in batch are cancelled and queued for retry
+	BATCH_DOWNLOAD_TIMEOUT = time.Duration(5) * time.Minute
+
+	// after this,thumbnail application is cancelled
+	// larger timeout due to song album art mapping
+	THUMBNAIL_APPLICATION_TIMEOUT = time.Duration(30) * time.Minute
+
+	// wait this much time before attempting to check whether song is downloaded
+	SONG_DOWNLOAD_WAIT_DURATION = time.Duration(5) * time.Second
+
+	// wait this much time before retrying
+	RETRY_BACKOFF_TIME = time.Duration(10) * time.Second
+
+	// maximum amount of retries
 	MAX_RETRIES = 3
 )
 
@@ -103,7 +114,6 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			batchCount   int     = 1
 			retryCount   int     = 0
 			totalBatches float64 = math.Ceil(float64(count) / float64(PLAYLIST_BATCH_SIZE))
-			cmds         []string
 			retries      []*pb.SongMetaRequest
 		)
 
@@ -125,7 +135,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 				"batch_offset":      offset,
 			}).Info("playlist batch execution")
 			results, retry := s.offloadBatchToYoutubeDL(ctx, req.Songs[i:offset], fetchChan)
-			cmds = append(cmds, results...)
+			go s.applyThumbnailsSerially(ctx, results)
 			retries = append(retries, retry...)
 			batchCount++
 		}
@@ -136,8 +146,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 			"batch_size":        PLAYLIST_BATCH_SIZE,
 			"time_taken":        time.Since(dispatchTime).Minutes(),
 		}).Info("Download Successful")
-		s.redis.UpdateStatus(req.Type, req.ResourceId, STATUS_DWN_COMPLETE)
-		s.applyThumbnailsSerially(ctx, cmds)
+		// s.redis.UpdateStatus(req.Type, req.ResourceId, STATUS_DWN_COMPLETE)
 		s.redis.UpdateStatus(req.Type, req.ResourceId, STATUS_FINISHED)
 
 		// using a closure for retry
@@ -150,7 +159,7 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 					"number_of_songs":            numRetries,
 					"current_retry":              retryCount,
 					"max_retry_count":            MAX_RETRIES,
-				})
+				}).Info("retrying failed downloads with backoff")
 				time.Sleep(RETRY_BACKOFF_TIME)
 				_, _ = s.PlaylistDownload(
 					ctx,
@@ -277,7 +286,7 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 				return postprocessingcmds, retry
 			}
 			if result.postprocessingcmd != "" {
-				postprocessingcmds = append(postprocessingcmds, result.postprocessingcmd)
+				postprocessingcmds = append(result.postprocessingcmd)
 			} else {
 				retry = append(retry, result.meta)
 			}

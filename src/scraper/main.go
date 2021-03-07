@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -75,7 +77,30 @@ func init() {
 	}
 }
 
+func checkRequisites() ([]string, bool) {
+	ok := true
+	requisites := []string{
+		"ffmpeg",
+		"youtube-dl",
+	}
+	needed := []string{}
+	for _, r := range requisites {
+		_, err := exec.LookPath(r)
+		if err != nil {
+			needed = append(needed, r)
+			ok = false
+		}
+	}
+	return needed, ok
+}
+
 func main() {
+	// check pre-requisites
+	if needed, ok := checkRequisites(); !ok {
+		log.WithFields(log.Fields{
+			"dependancies": strings.Join(needed, ", "),
+		}).Fatal("Pre-requisites not available in PATH")
+	}
 	// create redis repo and redis client
 	rdc, err := redisConnect()
 	if err != nil {
