@@ -286,7 +286,7 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 				return postprocessingcmds, retry
 			}
 			if result.postprocessingcmd != "" {
-				postprocessingcmds = append(result.postprocessingcmd)
+				postprocessingcmds = append(postprocessingcmds, result.postprocessingcmd)
 			} else {
 				retry = append(retry, result.meta)
 			}
