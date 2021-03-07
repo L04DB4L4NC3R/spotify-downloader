@@ -6,6 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	pkg "github.com/L04DB4L4NC3R/spotify-downloader/ytber/pkg"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -69,7 +72,9 @@ func main() {
 
 	go globalChannelPool(cerr)
 	cleanup(cerr)
-
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	if err := pkg.Register(redisRepo, cerr); err != nil {
 		log.Fatal(err)
 	}
