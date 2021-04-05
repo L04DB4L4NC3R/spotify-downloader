@@ -9,6 +9,7 @@ RUN protoc --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=require_unimplemented_servers=false:. --go-grpc_opt=paths=source_relative \
 ./proto/*.proto
 
+RUN go mod tidy && go mod verify
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ytber .
 
 FROM python:3-alpine

@@ -10,6 +10,7 @@ RUN protoc --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 ./proto/*.proto
 
+RUN go mod tidy && go mod verify
 # Compile
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scraper .
 
