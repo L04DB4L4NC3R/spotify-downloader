@@ -1,22 +1,16 @@
 version: "3"
 services:
   scraper:
-    build:
-      context: .
-      dockerfile: ./src/scraper/Dockerfile
     env_file: ./config/secret.env
-    image: angadsharma1016/spotify-downloader-scraper
+    image: angadsharma1016/spotify-downloader-scraper:v0.1.5
     ports:
       - 3000:3000
     depends_on:
       - redis
 
   ytber:
-    build:
-      context: .
-      dockerfile: ./src/ytber/Dockerfile
     env_file: ./config/secret.env
-    image: angadsharma1016/spotify-downloader-ytber
+    image: angadsharma1016/spotify-downloader-ytber:v0.1.5
     volumes:
       - ./music/:/root/music/
     depends_on:
