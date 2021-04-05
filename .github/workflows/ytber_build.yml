@@ -1,6 +1,9 @@
 name: Scraper Docker Push
 
-on: release
+on: 
+  release:
+    types:
+      - created
 
 jobs:
   main:
