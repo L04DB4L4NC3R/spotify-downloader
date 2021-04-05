@@ -7,38 +7,13 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 - [X] Entire playlist download
 - [X] Apply metadata on downloaded songs
 - [X] Entire album download
-- [ ] Download Sync Daemon (checks redis before downloading a song)
-- [ ] Parallel encoding of thumbnails
+- [X] Independently scale downloader and renderer
+- [X] Configurable concurrency
 
 ## UI Features
 
-- [ ] Web-UI for bulk process status handling
-- [ ] Streaming music playback
-
-## How to run
-
-* Install `youtube-dl` and `ffmpeg`
-
-* Configure secrets: Copy `config/secret.env.sample` to `config/secret.env` and fill the secrets
-
-* Generate protocol buffer code (requires protoc & gRPC installation)
-
-```sh
-go get -u -v github.com/golang/protobuf/proto
-go get -u -v github.com/golang/protobuf/protoc-gen-go
-make build-proto
-```
-
-* Build and run
-```sh
-make run
-```
-
-* Kill
-
-```sh
-make kill
-```
+- [ ] Web-UI for downloading
+- [ ] CLI
 
 ## Run using docker compose
 
@@ -55,6 +30,9 @@ chmod +x ./scripts/docker-setup.sh
 ```sh
 ./scripts/docker-setup.sh
 ```
+
+## Run Locally
+Installation instructions in wiki
 
 ## Endpoints
 
