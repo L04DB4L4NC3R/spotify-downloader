@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"net/http"
@@ -61,7 +63,30 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
+func checkRequisites() ([]string, bool) {
+	ok := true
+	requisites := []string{
+		"ffmpeg",
+		"youtube-dl",
+	}
+	needed := []string{}
+	for _, r := range requisites {
+		_, err := exec.LookPath(r)
+		if err != nil {
+			needed = append(needed, r)
+			ok = false
+		}
+	}
+	return needed, ok
+}
+
 func main() {
+	// check pre-requisites
+	if needed, ok := checkRequisites(); !ok {
+		log.WithFields(log.Fields{
+			"dependancies": strings.Join(needed, ", "),
+		}).Fatal("Pre-requisites not available in PATH")
+	}
 	rdc, err := redisConnect()
 	if err != nil {
 		log.Fatal(err)
