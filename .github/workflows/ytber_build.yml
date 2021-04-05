@@ -1,13 +1,14 @@
 name: Scraper Docker Push
 
-on:
-  push:
-    branches: main
+on: release
 
 jobs:
   main:
     runs-on: self-hosted
     steps:
+      - uses: actions/checkout@v2
+      - name: Set output
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
         with:
@@ -24,7 +25,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-ytber:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-ytber:${{ env.RELEASE_VERSION }}
           file: ./src/ytber/Dockerfile
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
