@@ -32,6 +32,6 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-scraper:${{ env.RELEASE_VERSION }}
           file: ./src/scraper/Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
