@@ -70,9 +70,9 @@ var (
 	MAXPROCS = runtime.NumCPU()
 )
 
-type service struct {
-	redis Repository
-	cerr  chan AsyncErrors
+type cmdError struct {
+	Err error
+	Cmd *exec.Cmd
 }
 
 type asyncReturn struct {
@@ -81,12 +81,27 @@ type asyncReturn struct {
 	postprocessingcmd string
 }
 
+type service struct {
+	redis Repository
+	cerr  chan AsyncErrors
+}
+
 type Service interface {
-	SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error)
-	PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequest) (*pb.PlaylistMetaResponse, error)
-	offloadToYoutubeDL(ctx context.Context, format string, query string, songmeta *pb.SongMetaRequest) (postprocessingcmd asyncReturn)
-	offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongMetaRequest, fetchChan chan asyncReturn) (postprocessingcmds []asyncReturn, retries []*pb.SongMetaRequest, resources []*pb.SongMetaRequest)
-	ApplyThumbnails(ctx context.Context, thumbscmds []string, resources []*pb.SongMetaRequest)
+	SongDownload(
+		ctx context.Context,
+		req *pb.SongMetaRequest,
+	) (*pb.SongMetaResponse, error)
+
+	PlaylistDownload(
+		ctx context.Context,
+		req *pb.PlaylistMetaRequest,
+	) (*pb.PlaylistMetaResponse, error)
+
+	ApplyThumbnails(
+		ctx context.Context,
+		thumbscmds []string,
+		resources []*pb.SongMetaRequest,
+	)
 }
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
@@ -192,13 +207,13 @@ func (s *service) PlaylistDownload(ctx context.Context, req *pb.PlaylistMetaRequ
 }
 
 func (s *service) offloadToYoutubeDL(
-	ctx context.Context,
+	nctx context.Context,
 	format string,
 	query string,
 	songmeta *pb.SongMetaRequest,
 ) asyncReturn {
-
-	ctx, _ = context.WithTimeout(context.Background(), SONG_DOWNLOAD_TIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), SONG_DOWNLOAD_TIMEOUT)
+	defer cancel()
 
 	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
 
@@ -319,7 +334,7 @@ func (s *service) ApplyThumbnails(ctx context.Context, thumbscmds []string, reso
 	var (
 		nctx, cancel = context.WithTimeout(context.Background(), THUMBNAIL_APPLICATION_TIMEOUT)
 		n            = len(thumbscmds)
-		errChan      = make(chan *CmdError, n)
+		errChan      = make(chan *cmdError, n)
 		cmdChan      = make(chan *exec.Cmd, n)
 		failedCmds   []*exec.Cmd
 	)
@@ -328,7 +343,7 @@ func (s *service) ApplyThumbnails(ctx context.Context, thumbscmds []string, reso
 	log.Infof("queuing %d thumbnail jobs", n)
 
 	// initialize worker pool for running commands
-	s.InitExecPool(nctx, n, cmdChan, errChan)
+	s.initExecPool(nctx, n, cmdChan, errChan)
 
 	for _, command := range thumbscmds {
 		cmdChan <- exec.CommandContext(ctx, "sh", "-c", command)
@@ -349,16 +364,11 @@ func (s *service) ApplyThumbnails(ctx context.Context, thumbscmds []string, reso
 	log.Info("%d thumbnails applied, %d failed", n, len(failedCmds))
 }
 
-type CmdError struct {
-	Err error
-	Cmd *exec.Cmd
-}
-
-func (s *service) InitExecPool(
+func (s *service) initExecPool(
 	ctx context.Context,
 	count int,
 	cmdChan chan *exec.Cmd, // context bound cmds
-	errChan chan *CmdError,
+	errChan chan *cmdError,
 ) {
 	if count > MAXPROCS {
 		count = MAXPROCS
@@ -367,7 +377,7 @@ func (s *service) InitExecPool(
 		go func() {
 			for cmd := range cmdChan {
 				if err := cmd.Run(); err != nil {
-					errChan <- &CmdError{
+					errChan <- &cmdError{
 						Err: err,
 						Cmd: cmd,
 					}
