@@ -1,4 +1,4 @@
-name: Scraper Docker Push
+name: Ytber Docker Push
 
 on: 
   release:
@@ -30,7 +30,9 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-ytber:${{ env.RELEASE_VERSION }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-ytber:${{ env.RELEASE_VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-ytber:latest
           file: ./src/ytber/Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: Image digest
