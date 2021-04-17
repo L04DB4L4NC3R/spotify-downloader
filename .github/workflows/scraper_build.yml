@@ -30,7 +30,9 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-scraper:${{ env.RELEASE_VERSION }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-scraper:${{ env.RELEASE_VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-scraper:latest
           file: ./src/scraper/Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: Image digest
