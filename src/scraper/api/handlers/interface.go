@@ -10,6 +10,7 @@ type Handler interface {
 	DownloadSong() http.Handler
 	DownloadPlaylist() http.Handler
 	DownloadAlbum() http.Handler
+	DownloadShow() http.Handler
 	SyncPlaylist() http.Handler
 
 	// download state alterations
@@ -20,11 +21,13 @@ type Handler interface {
 	ViewSongProgress() http.Handler
 	ViewPlaylistProgress() http.Handler
 	ViewAlbumProgress() http.Handler
+	ViewShowProgress() http.Handler
 
 	// informational endpoints
 	ViewPlaylistMeta() http.Handler
 	ViewAlbumMeta() http.Handler
 	ViewSongMeta() http.Handler
+	ViewShowMeta() http.Handler
 
 	// player
 	PlayPauseSong() http.Handler

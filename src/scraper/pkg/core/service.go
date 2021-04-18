@@ -27,6 +27,7 @@ const (
 	RESOURCE_PLAYLIST = "playlists"
 	RESOURCE_SONG     = "tracks"
 	RESOURCE_ALBUM    = "albums"
+	RESOURCE_SHOW     = "shows"
 )
 
 const (
