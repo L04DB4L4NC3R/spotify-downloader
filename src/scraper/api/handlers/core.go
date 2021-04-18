@@ -37,6 +37,18 @@ func (h *handler) ViewAlbumMeta() http.Handler {
 	})
 }
 
+func (h *handler) ViewShowMeta() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistMeta, err := h.service.FetchPlaylistMeta(core.RESOURCE_SHOW, vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Show Metadata", playlistMeta, http.StatusOK)
+	})
+}
+
 func (h *handler) ViewSongMeta() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -85,6 +97,18 @@ func (h *handler) ViewAlbumProgress() http.Handler {
 	})
 }
 
+func (h *handler) ViewShowProgress() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		status, err := h.service.CheckPlaylistStatus(core.RESOURCE_SHOW, vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Show Progress", status, http.StatusOK)
+	})
+}
+
 func (h *handler) PausePlaylistDownload() http.Handler {
 	panic("not implemented") // TODO: Implement
 }
@@ -127,6 +151,20 @@ func (h *handler) DownloadAlbum() http.Handler {
 		// Fireforget
 		// gRPC transport is handled in the service
 		views.Fill(w, "Album Metadata", playlistmetas, http.StatusAccepted)
+	})
+}
+
+func (h *handler) DownloadShow() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_SHOW, vars["id"], nil)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// Fireforget
+		// gRPC transport is handled in the service
+		views.Fill(w, "Show Metadata", playlistmetas, http.StatusAccepted)
 	})
 }
 

@@ -36,6 +36,9 @@ type songMetaStruct struct {
 
 func Register() (*grpc.ClientConn, FeedMetaClient, error) {
 	addr := os.Getenv("YTBER_GRPC_SERVER_ADDR")
+	if addr == "" {
+		addr = "localhost:4040"
+	}
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		return nil, nil, err
