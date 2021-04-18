@@ -2,7 +2,7 @@ version: "3"
 services:
   scraper:
     env_file: ./config/secret.env
-    image: angadsharma1016/spotify-downloader-scraper:v0.1.5
+    image: angadsharma1016/spotify-downloader-scraper:latest
     ports:
       - 3000:3000
     depends_on:
@@ -10,7 +10,7 @@ services:
 
   ytber:
     env_file: ./config/secret.env
-    image: angadsharma1016/spotify-downloader-ytber:v0.1.5
+    image: angadsharma1016/spotify-downloader-ytber:latest
     volumes:
       - ./music/:/root/music/
     depends_on:
