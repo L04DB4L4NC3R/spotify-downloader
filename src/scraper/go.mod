@@ -16,6 +16,7 @@ require (
 	github.com/rapito/go-spotify v0.0.0-20171031112644-2944f751da9c
 	github.com/sirupsen/logrus v1.7.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
+	github.com/urfave/cli/v2 v2.3.0 // indirect
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
 	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.25.0
