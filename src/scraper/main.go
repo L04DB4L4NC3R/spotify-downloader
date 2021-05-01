@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -40,7 +41,7 @@ func spotifyApiConnect() (*spotify.Spotify, error) {
 	client := spotify.New(os.Getenv("SPOTIFY_CLIENT_ID"), os.Getenv("SPOTIFY_CLIENT_SECRET"))
 	_, err := client.Authorize()
 	if err != nil {
-		return nil, err[0]
+		return nil, errors.New("error connecting to spotify, please try again")
 	}
 	log.Info("Connected to Spotify")
 	return &client, nil

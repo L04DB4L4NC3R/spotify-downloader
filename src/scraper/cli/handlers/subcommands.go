@@ -30,7 +30,7 @@ var (
 
 type status struct {
 	Message string `json:"message"`
-	Data    string `json:"data"`
+	Status  string `json:"data"`
 }
 
 type handler struct {
@@ -89,6 +89,7 @@ func (h *handler) DownloadSong() *cli.Command {
 				fmt.Printf("song failed with status: %d\n", resp.StatusCode)
 				return ErrSongFailed
 			}
+			var previousStatus string
 			for {
 				resp, err := h.client.Get(
 					h.endpoint +
@@ -98,10 +99,13 @@ func (h *handler) DownloadSong() *cli.Command {
 					var data status
 					body, _ := ioutil.ReadAll(resp.Body)
 					json.Unmarshal(body, &data)
-					fmt.Printf("status: %s\n", data.Data)
-					if data.Data == pkg.STATUS_DWN_FAILED || data.Data == pkg.STATUS_DWN_COMPLETE {
+					if previousStatus != data.Status {
+						fmt.Printf("status: %s\n", data.Status)
+					}
+					if data.Status == pkg.STATUS_DWN_FAILED || data.Status == pkg.STATUS_DWN_COMPLETE {
 						break
 					}
+					previousStatus = data.Status
 				}
 				time.Sleep(time.Duration(1) * time.Second)
 			}
