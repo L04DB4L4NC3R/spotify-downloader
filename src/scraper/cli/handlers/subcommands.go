@@ -10,11 +10,17 @@ import (
 )
 
 const (
-	PING = "/ping/"
+	PING     = "/ping/"
+	SONG     = "/song/%s/"
+	PLAYLIST = "/playlist/%s/"
+	ALBUM    = "/album/%s/"
+	SHOW     = "/show/%s/"
 )
 
 var (
-	ErrPingFail = errors.New("ping failed")
+	ErrPingFail        = errors.New("ping failed")
+	ErrInvalidArgCount = errors.New("invalid number of arguments")
+	ErrSongFailed      = errors.New("song failed")
 )
 
 type handler struct {
@@ -29,9 +35,8 @@ func NewHandler(client *http.Client, endpoint string) Handler {
 // downloader
 func (h *handler) Health() *cli.Command {
 	return &cli.Command{
-		Name:    "ping",
-		Aliases: []string{"p"},
-		Usage:   "check to see whether system is setup",
+		Name:  "ping",
+		Usage: "check to see whether system is setup",
 		Action: func(*cli.Context) error {
 			then := time.Now()
 			resp, err := h.client.Get(h.endpoint + PING)
@@ -40,7 +45,7 @@ func (h *handler) Health() *cli.Command {
 				return err
 			}
 			if resp.StatusCode != http.StatusOK {
-				fmt.Printf("ping failed with status: %d", resp.StatusCode)
+				fmt.Printf("ping failed with status: %d\n", resp.StatusCode)
 				return ErrPingFail
 			}
 			fmt.Printf("ping succeeded\nEndpoint: %s\nTime:%.4f ms",
@@ -54,26 +59,130 @@ func (h *handler) Health() *cli.Command {
 
 func (h *handler) DownloadSong() *cli.Command {
 	return &cli.Command{
-		Name:        "",
-		Aliases:     nil,
-		Usage:       "",
-		UsageText:   "",
-		Description: "DownloadSong",
-		Category:    "",
-		Action:      func(*cli.Context) error { return nil },
+		Name:    "song",
+		Aliases: []string{"s", "track", "t"},
+		Usage:   "download song",
+		Action: func(c *cli.Context) error {
+			then := time.Now()
+			if c.NArg() < 1 {
+				return ErrInvalidArgCount
+			}
+			fmt.Println(c.Args().Get(0))
+			resp, err := h.client.Get(
+				h.endpoint +
+					fmt.Sprintf(SONG, c.Args().Get(0)),
+			)
+			if err != nil {
+				fmt.Printf("song failed with error: %v", err)
+				return err
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("song failed with status: %d\n", resp.StatusCode)
+				return ErrSongFailed
+			}
+			fmt.Printf("song succeeded\nEndpoint: %s\nTime:%.4f ms",
+				h.endpoint,
+				float64(time.Since(then).Microseconds())/10000,
+			)
+			return nil
+		},
 	}
 }
 
 func (h *handler) DownloadPlaylist() *cli.Command {
-	return &cli.Command{}
+	return &cli.Command{
+		Name:    "playlist",
+		Aliases: []string{"p"},
+		Usage:   "download playlist",
+		Action: func(c *cli.Context) error {
+			then := time.Now()
+			if c.NArg() < 1 {
+				return ErrInvalidArgCount
+			}
+			fmt.Println(c.Args().Get(0))
+			resp, err := h.client.Get(
+				h.endpoint +
+					fmt.Sprintf(PLAYLIST, c.Args().Get(0)),
+			)
+			if err != nil {
+				fmt.Printf("playlist failed with error: %v", err)
+				return err
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("playlist failed with status: %d\n", resp.StatusCode)
+				return ErrSongFailed
+			}
+			fmt.Printf("playlist succeeded\nEndpoint: %s\nTime:%.4f ms",
+				h.endpoint,
+				float64(time.Since(then).Microseconds())/10000,
+			)
+			return nil
+		},
+	}
 }
 
 func (h *handler) DownloadAlbum() *cli.Command {
-	return &cli.Command{}
+	return &cli.Command{
+		Name:    "album",
+		Aliases: []string{"a"},
+		Usage:   "download album",
+		Action: func(c *cli.Context) error {
+			then := time.Now()
+			if c.NArg() < 1 {
+				return ErrInvalidArgCount
+			}
+			fmt.Println(c.Args().Get(0))
+			resp, err := h.client.Get(
+				h.endpoint +
+					fmt.Sprintf(ALBUM, c.Args().Get(0)),
+			)
+			if err != nil {
+				fmt.Printf("album failed with error: %v", err)
+				return err
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("album failed with status: %d\n", resp.StatusCode)
+				return ErrSongFailed
+			}
+			fmt.Printf("album succeeded\nEndpoint: %s\nTime:%.4f ms",
+				h.endpoint,
+				float64(time.Since(then).Microseconds())/10000,
+			)
+			return nil
+		},
+	}
 }
 
 func (h *handler) DownloadShow() *cli.Command {
-	return &cli.Command{}
+	return &cli.Command{
+		Name:    "show",
+		Aliases: []string{"podcast"},
+		Usage:   "download show",
+		Action: func(c *cli.Context) error {
+			then := time.Now()
+			if c.NArg() < 1 {
+				return ErrInvalidArgCount
+			}
+			fmt.Println(c.Args().Get(0))
+			resp, err := h.client.Get(
+				h.endpoint +
+					fmt.Sprintf(SHOW, c.Args().Get(0)),
+			)
+			if err != nil {
+				fmt.Printf("show failed with error: %v", err)
+				return err
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("show failed with status: %d\n", resp.StatusCode)
+				return ErrSongFailed
+			}
+			fmt.Printf("show succeeded\nEndpoint: %s\nTime:%.4f ms",
+				h.endpoint,
+				float64(time.Since(then).Microseconds())/10000,
+			)
+			return nil
+		},
+	}
 }
 
 func (h *handler) SyncPlaylist() *cli.Command {
