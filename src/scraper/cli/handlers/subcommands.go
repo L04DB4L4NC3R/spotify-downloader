@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
+	pkg "github.com/L04DB4L4NC3R/spotify-downloader/scraper/pkg/core"
 	"github.com/urfave/cli/v2"
 )
 
@@ -15,6 +18,8 @@ const (
 	PLAYLIST = "/playlist/%s/"
 	ALBUM    = "/album/%s/"
 	SHOW     = "/show/%s/"
+
+	SONG_STATUS = "/status/song/%s/"
 )
 
 var (
@@ -22,6 +27,11 @@ var (
 	ErrInvalidArgCount = errors.New("invalid number of arguments")
 	ErrSongFailed      = errors.New("song failed")
 )
+
+type status struct {
+	Message string `json:"message"`
+	Data    string `json:"data"`
+}
 
 type handler struct {
 	endpoint string
@@ -67,7 +77,6 @@ func (h *handler) DownloadSong() *cli.Command {
 			if c.NArg() < 1 {
 				return ErrInvalidArgCount
 			}
-			fmt.Println(c.Args().Get(0))
 			resp, err := h.client.Get(
 				h.endpoint +
 					fmt.Sprintf(SONG, c.Args().Get(0)),
@@ -79,6 +88,22 @@ func (h *handler) DownloadSong() *cli.Command {
 			if resp.StatusCode == http.StatusInternalServerError {
 				fmt.Printf("song failed with status: %d\n", resp.StatusCode)
 				return ErrSongFailed
+			}
+			for {
+				resp, err := h.client.Get(
+					h.endpoint +
+						fmt.Sprintf(SONG_STATUS, c.Args().Get(0)),
+				)
+				if err == nil {
+					var data status
+					body, _ := ioutil.ReadAll(resp.Body)
+					json.Unmarshal(body, &data)
+					fmt.Printf("status: %s\n", data.Data)
+					if data.Data == pkg.STATUS_DWN_FAILED || data.Data == pkg.STATUS_DWN_COMPLETE {
+						break
+					}
+				}
+				time.Sleep(time.Duration(1) * time.Second)
 			}
 			fmt.Printf("song succeeded\nEndpoint: %s\nTime:%.4f ms",
 				h.endpoint,
@@ -99,7 +124,6 @@ func (h *handler) DownloadPlaylist() *cli.Command {
 			if c.NArg() < 1 {
 				return ErrInvalidArgCount
 			}
-			fmt.Println(c.Args().Get(0))
 			resp, err := h.client.Get(
 				h.endpoint +
 					fmt.Sprintf(PLAYLIST, c.Args().Get(0)),
@@ -131,7 +155,6 @@ func (h *handler) DownloadAlbum() *cli.Command {
 			if c.NArg() < 1 {
 				return ErrInvalidArgCount
 			}
-			fmt.Println(c.Args().Get(0))
 			resp, err := h.client.Get(
 				h.endpoint +
 					fmt.Sprintf(ALBUM, c.Args().Get(0)),
@@ -163,7 +186,6 @@ func (h *handler) DownloadShow() *cli.Command {
 			if c.NArg() < 1 {
 				return ErrInvalidArgCount
 			}
-			fmt.Println(c.Args().Get(0))
 			resp, err := h.client.Get(
 				h.endpoint +
 					fmt.Sprintf(SHOW, c.Args().Get(0)),
