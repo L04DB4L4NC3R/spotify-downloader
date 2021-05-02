@@ -21,6 +21,9 @@ import (
 
 func redisConnect() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
 	rdc := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: os.Getenv("REDIS_PASSWORD"),
