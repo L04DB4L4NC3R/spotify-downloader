@@ -15,4 +15,4 @@ jobs:
         goos: linux
         goarch: amd64
         binary_name: "sdl"
-        build_command: "make cli"
+        pre_command: "make build-proto"
