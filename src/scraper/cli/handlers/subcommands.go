@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,13 @@ const (
 	ALBUM    = "/album/%s/"
 	SHOW     = "/show/%s/"
 
-	SONG_STATUS = "/status/song/%s/"
+	SONG_STATUS      = "/status/song/%s/"
+	BULK_SONG_STATUS = "/status/songs/"
+	PLAYLIST_STATUS  = "/status/playlist/%s/"
+	ALBUM_STATUS     = "/status/album/%s/"
+	SHOW_STATUS      = "/status/show/%s/"
+
+	FETCH_RESOURCE_META = "/metas/%s/%s/"
 )
 
 var (
@@ -31,6 +38,16 @@ var (
 type status struct {
 	Message string `json:"message"`
 	Status  string `json:"data"`
+}
+
+type metas struct {
+	Message string               `json:"message"`
+	Meta    *pkg.PlaylistPayload `json:"data"`
+}
+
+type bulkStatus struct {
+	Message string   `json:"message"`
+	Status  []string `json:"data"`
 }
 
 type handler struct {
@@ -140,7 +157,92 @@ func (h *handler) DownloadPlaylist() *cli.Command {
 				fmt.Printf("playlist failed with status: %d\n", resp.StatusCode)
 				return ErrSongFailed
 			}
-			fmt.Printf("playlist succeeded\nEndpoint: %s\nTime:%.4f ms",
+			fmt.Println("queued playlist download")
+			var (
+				meta      metas
+				songIds   []string
+				songBytes []byte
+				songs     struct {
+					SongIds []string `json:"song_ids"`
+				}
+				isSuccessfulSongsFetch = false
+			)
+			resp, err = h.client.Get(
+				h.endpoint +
+					fmt.Sprintf(FETCH_RESOURCE_META, pkg.RESOURCE_PLAYLIST, c.Args().Get(0)),
+			)
+			if err == nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				json.Unmarshal(body, &meta)
+				if meta.Meta != nil {
+					for _, v := range meta.Meta.SongMetas {
+						songIds = append(songIds, v.SongID)
+					}
+				}
+				songs.SongIds = songIds
+				isSuccessfulSongsFetch = true
+				fmt.Println("Que\tDwn\tFail\tFin")
+				songBytes, _ = json.Marshal(songs)
+			}
+			for {
+				// fetch song status
+				if isSuccessfulSongsFetch {
+					var (
+						statusUnknownCount       = 0
+						statusQueuedCount        = 0
+						statusThumbnailCount     = 0
+						statusThumbnailFailCount = 0
+						statusCompleteCount      = 0
+						statusFailedCount        = 0
+					)
+					res, e := h.client.Post(
+						h.endpoint+BULK_SONG_STATUS,
+						"application/json",
+						bytes.NewBuffer(songBytes),
+					)
+					if e == nil {
+						var statuses bulkStatus
+						body, _ := ioutil.ReadAll(res.Body)
+						json.Unmarshal(body, &statuses)
+						for _, v := range statuses.Status {
+							switch v {
+							case pkg.STATUS_UNKNOWN:
+								statusUnknownCount++
+							case pkg.STATUS_DWN_QUEUED:
+								statusQueuedCount++
+							case pkg.STATUS_DWN_COMPLETE:
+								statusThumbnailCount++
+							case pkg.STATUS_DWN_FAILED:
+								statusFailedCount++
+							case pkg.STATUS_THUMBNAIL_APPLIED:
+								statusCompleteCount++
+							case pkg.STATUS_THUMBNAIL_FAILED:
+								statusThumbnailFailCount++
+							}
+						}
+					}
+					fmt.Printf(
+						"\r%v\t%v\t%v\t%v",
+						statusQueuedCount, statusCompleteCount,
+						statusFailedCount, statusThumbnailCount,
+					)
+				}
+				resp, err := h.client.Get(
+					h.endpoint +
+						fmt.Sprintf(PLAYLIST_STATUS, c.Args().Get(0)),
+				)
+				if err == nil {
+					var data status
+					body, _ := ioutil.ReadAll(resp.Body)
+					json.Unmarshal(body, &data)
+					if data.Status == pkg.STATUS_DWN_FAILED ||
+						data.Status == pkg.STATUS_DWN_COMPLETE {
+						break
+					}
+				}
+				time.Sleep(time.Duration(5) * time.Second)
+			}
+			fmt.Printf("\nplaylist succeeded\nEndpoint: %s\nTime:%.4f ms",
 				h.endpoint,
 				float64(time.Since(then).Microseconds())/10000,
 			)

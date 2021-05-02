@@ -17,7 +17,7 @@ func main() {
 	var commands = handler.NewHandler(client, endpoint)
 	app := &cli.App{
 		Name:  "sdl",
-		Usage: "sdl [action] [resource] [id]",
+		Usage: "sdl [action] [id]",
 		Action: func(c *cli.Context) error {
 			fmt.Println("spotify-downloader")
 			return nil
