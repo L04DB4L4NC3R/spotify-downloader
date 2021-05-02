@@ -26,4 +26,7 @@ build-proto:
 ./proto/*.proto
 
 cli: build-proto
-	cd src/scraper/cli && go build -o sdl main.go && mv sdl ../../../
+	cd src/scraper/cli && GOOS=linux GOARCH=amd64 go build -o sdl main.go && mv sdl ../../../sdl-linux-amd64
+	cd src/scraper/cli && GOOS=linux GOARCH=arm go build -o sdl main.go && mv sdl ../../../sdl-linux-arm
+	cd src/scraper/cli && GOOS=darwin GOARCH=amd64 go build -o sdl main.go && mv sdl ../../../sdl-mac-amd64
+	cd src/scraper/cli && GOOS=darwin GOARCH=arm64 go build -o sdl main.go && mv sdl ../../../sdl-mac-arm64
