@@ -13,7 +13,7 @@ Download songs, playlists and albums, or sync in to your favourite tunes
 ## UI Features
 
 - [ ] Web-UI for downloading
-- [ ] CLI
+- [X] CLI
 
 ## Run using docker compose
 
@@ -45,7 +45,9 @@ Installation instructions in wiki
 | View Song Metadata | /meta/song/{id}/ |
 | View Playlist Metadata | /meta/playlist/{id}/ |
 | View Album Metadata | /meta/album/{id}/ |
+| Bulk View Resource Metadata | /metas/<resource>/{id}/ (where resource can be playlists, albums, shows)|
 | Check Song Download Progress | /status/song/{id}/ |
+| Check Bulk Song Download Progress | /status/songs/ (array of {"song_ids": []string} in POST) |
 | Check Playlist Download Progress | /status/playlist/{id}/ |
 | Check Album Download Progress | /status/album/{id}/ |
 
