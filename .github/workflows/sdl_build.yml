@@ -15,4 +15,4 @@ jobs:
         goos: linux
         goarch: amd64
         binary_name: "sdl"
-        project_path: "./src/scraper/cli"
+        build_command: "make cli"
