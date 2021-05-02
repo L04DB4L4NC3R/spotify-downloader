@@ -1,18 +1,37 @@
-name: CLI Release
+name: Cli Docker Push
+
 on: 
   release:
-    types: [created]
+    types: 
+      - created
 
 jobs:
-  release-linux-amd64:
-    name: release linux/amd64
-    runs-on: ubuntu-latest
+  main:
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v2
-    - uses: wangyoucao577/go-release-action@v1.17
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: amd64
-        binary_name: "sdl"
-        project_path: "./src/scraper/cli"
+      - uses: actions/checkout@v2
+      - name: Set output
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/spotify-downloader-sdl:${{ env.RELEASE_VERSION }}
+          file: ./src/scraper/cli/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
