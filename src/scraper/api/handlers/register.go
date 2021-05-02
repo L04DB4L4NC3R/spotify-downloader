@@ -22,10 +22,13 @@ func RegisterHandler(r *mux.Router, svc core.Service) {
 	r.Handle("/meta/song/{id}/", coreHandler.ViewSongMeta())
 	r.Handle("/meta/playlist/{id}/", coreHandler.ViewPlaylistMeta())
 	r.Handle("/meta/album/{id}/", coreHandler.ViewAlbumMeta())
+	r.Handle("/metas/{resource}/{id}/", coreHandler.FetchResourceSongs())
 	//r.Handle("/meta/show/{id}/", coreHandler.ViewShowMeta())
 
 	// status info
 	r.Handle("/status/song/{id}/", coreHandler.ViewSongProgress())
+	// POST ids
+	r.Handle("/status/songs/", coreHandler.ViewBulkSongProgress())
 	r.Handle("/status/playlist/{id}/", coreHandler.ViewPlaylistProgress())
 	r.Handle("/status/album/{id}/", coreHandler.ViewAlbumProgress())
 	//r.Handle("/status/show/{id}/", coreHandler.ViewShowProgress())

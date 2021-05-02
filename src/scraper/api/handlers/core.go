@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/views"
@@ -188,6 +189,32 @@ func (h *handler) Health() http.Handler {
 	})
 }
 
+func (h *handler) FetchResourceSongs() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		meta, err := h.service.FetchPlaylistSongMetas(vars["resource"], vars["id"])
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Resource Song Meta", meta, http.StatusOK)
+	})
+}
+
+func (h *handler) ViewBulkSongProgress() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var songs struct {
+			SongIds []string `json:"song_ids"`
+		}
+		json.NewDecoder(r.Body).Decode(&songs)
+		meta, err := h.service.CheckBulkSongStatus(songs.SongIds)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		views.Fill(w, "Bulk Song Status", meta, http.StatusOK)
+	})
+}
 func NewHandler(r *mux.Router, svc core.Service) Handler {
 	return &handler{
 		router:  r,

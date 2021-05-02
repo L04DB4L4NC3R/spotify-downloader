@@ -1,8 +1,6 @@
 package handler
 
-import (
-	"net/http"
-)
+import "net/http"
 
 type Handler interface {
 	// downloader
@@ -22,12 +20,14 @@ type Handler interface {
 	ViewPlaylistProgress() http.Handler
 	ViewAlbumProgress() http.Handler
 	ViewShowProgress() http.Handler
+	ViewBulkSongProgress() http.Handler
 
 	// informational endpoints
 	ViewPlaylistMeta() http.Handler
 	ViewAlbumMeta() http.Handler
 	ViewSongMeta() http.Handler
 	ViewShowMeta() http.Handler
+	FetchResourceSongs() http.Handler
 
 	// player
 	PlayPauseSong() http.Handler

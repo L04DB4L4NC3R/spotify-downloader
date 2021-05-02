@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	STATUS_META_FED         = "FED"
-	STATUS_YT_FETCHED       = "FETCHED"
-	STATUS_DWN_QUEUED       = "QUEUED"
-	STATUS_DWN_COMPLETE     = "COMPLETE"
-	STATUS_THUMBNAIL_FAILED = "THUMBNAIL_FAILED"
-	STATUS_DWN_FAILED       = "FAILED"
+	STATUS_UNKNOWN           = "UNKNOWN"
+	STATUS_META_FED          = "FED"
+	STATUS_YT_FETCHED        = "FETCHED"
+	STATUS_DWN_QUEUED        = "QUEUED"
+	STATUS_DWN_COMPLETE      = "FINISHED"
+	STATUS_THUMBNAIL_FAILED  = "THUMBNAIL_FAILED"
+	STATUS_THUMBNAIL_APPLIED = "COMPLETED"
+	STATUS_DWN_FAILED        = "FAILED"
 )
 
 const (
@@ -52,7 +54,9 @@ type Service interface {
 
 	// status tracking
 	CheckSongStatus(id string) (string, error)
+	CheckBulkSongStatus(ids []string) ([]string, error)
 	CheckPlaylistStatus(resource string, id string) (string, error)
+	FetchPlaylistSongMetas(resource, id string) (*PlaylistPayload, error)
 }
 
 type service struct {
@@ -253,7 +257,7 @@ func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
 		return songmeta, err
 	}
 	// if error occurs while saving to redis, it is handled by the global async error handler
-	go s.redis.SaveMeta(songmeta, STATUS_META_FED)
+	s.redis.SaveMeta(songmeta, STATUS_META_FED)
 	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 
@@ -262,7 +266,7 @@ func (s *service) PlaylistDownload(resource string, id string, path *string) ([]
 	if err != nil {
 		return nil, err
 	}
-	go s.redis.SaveMetaArray(resource, id, songmetas, STATUS_META_FED)
+	s.redis.SaveMetaArray(resource, id, songmetas, STATUS_META_FED)
 	return songmetas, s.queuePlaylistDownloadMessenger(resource, id, songmetas, path)
 }
 
@@ -276,4 +280,12 @@ func (s *service) CheckSongStatus(id string) (string, error) {
 
 func (s *service) CheckPlaylistStatus(resource string, id string) (string, error) {
 	return s.redis.GetStatus(resource, id)
+}
+
+func (s *service) FetchPlaylistSongMetas(resource, id string) (*PlaylistPayload, error) {
+	return s.redis.FetchMetaArray(resource, id)
+}
+
+func (s *service) CheckBulkSongStatus(ids []string) ([]string, error) {
+	return s.redis.GetBulkStatus(RESOURCE_SONG, ids)
 }
