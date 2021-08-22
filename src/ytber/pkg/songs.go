@@ -11,6 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	htmlSingleQuoteString = "&#39;"
+)
+
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
 	log.WithFields(log.Fields{
 		"url":   req.Url,
@@ -49,8 +53,10 @@ func (s *service) offloadToYoutubeDL(
 	errcmd := ""
 
 	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, artistName, songTitle, songmeta.Date, songmeta.Url, string(songmeta.Track))
+	metacommand = strings.ReplaceAll(metacommand, htmlSingleQuoteString, "\\'")
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
+	downloadcommand = strings.ReplaceAll(downloadcommand, htmlSingleQuoteString, "\\'")
 	s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_QUEUED)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", downloadcommand)
@@ -103,6 +109,7 @@ func (s *service) offloadToYoutubeDL(
 
 	// thumbnail command
 	postprocessingcmd := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
+	postprocessingcmd = strings.ReplaceAll(postprocessingcmd, htmlSingleQuoteString, "'")
 	return asyncReturn{
 		query:             query,
 		meta:              songmeta,
