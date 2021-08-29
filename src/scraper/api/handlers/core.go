@@ -124,7 +124,17 @@ func (h *handler) PlayPauseSong() http.Handler {
 }
 
 func (h *handler) SyncPlaylist() http.Handler {
-	panic("not implemented") // TODO: Implement
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		playlistmetas, err := h.service.PlaylistSync(core.RESOURCE_PLAYLIST, vars["id"], nil)
+		if err != nil {
+			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
+			return
+		}
+		// Fireforget
+		// gRPC transport is handled in the service
+		views.Fill(w, "Playlist Metadata", playlistmetas, http.StatusAccepted)
+	})
 }
 
 func (h *handler) DownloadPlaylist() http.Handler {

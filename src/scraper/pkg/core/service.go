@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"sync"
 
+	"log"
+
 	pb "github.com/L04DB4L4NC3R/spotify-downloader/scraper/proto"
 	"github.com/rapito/go-spotify/spotify"
 )
@@ -50,7 +52,7 @@ type Service interface {
 	// core services
 	SongDownload(id string, path *string) (*SongMeta, error)
 	PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error)
-	PlaylistSync(url string, path *string) error
+	PlaylistSync(resource string, id string, path *string) ([]SongMeta, error)
 
 	// status tracking
 	CheckSongStatus(id string) (string, error)
@@ -270,8 +272,44 @@ func (s *service) PlaylistDownload(resource string, id string, path *string) ([]
 	return songmetas, s.queuePlaylistDownloadMessenger(resource, id, songmetas, path)
 }
 
-func (s *service) PlaylistSync(url string, path *string) error {
-	panic("not implemented") // TODO: Implement
+func (s *service) PlaylistSync(resource string, id string, path *string) ([]SongMeta, error) {
+	var (
+		metaCh  = make(chan *PlaylistPayload, 1)
+		songMap = make(chan map[string]SongMeta)
+		err     error
+	)
+	go func() {
+		songs := make(map[string]SongMeta)
+		p, err := s.redis.FetchMetaArray(resource, id)
+		if err != nil {
+			log.Printf("error fetching from redis: %v", err)
+			songMap <- songs
+			return
+		}
+		for _, v := range p.SongMetas {
+			songs[v.SongID] = v
+		}
+		songMap <- songs
+	}()
+	go func(e error) {
+		songmetas, er := s.FetchPlaylistMeta(resource, id)
+		e = er
+		metaCh <- &PlaylistPayload{songmetas}
+	}(err)
+	if err != nil {
+		return nil, err
+	}
+	downloaded := <-songMap
+	toBeQueuedSongs := []SongMeta{}
+	all := <-metaCh
+	for _, v := range all.SongMetas {
+		if _, ok := downloaded[v.SongID]; ok {
+			continue
+		}
+		toBeQueuedSongs = append(toBeQueuedSongs, v)
+	}
+	log.Printf("total songs: %v; alredy downloaded: %v", len(all.SongMetas), len(downloaded))
+	return toBeQueuedSongs, s.queuePlaylistDownloadMessenger(resource, id, toBeQueuedSongs, path)
 }
 
 func (s *service) CheckSongStatus(id string) (string, error) {
