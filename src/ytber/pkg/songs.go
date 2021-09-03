@@ -13,6 +13,8 @@ import (
 
 const (
 	htmlSingleQuoteString = "&#39;"
+	htmlDoubleQuoteString = "&#34;"
+	htmlAmpersand         = "&amp;"
 )
 
 func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*pb.SongMetaResponse, error) {
@@ -53,10 +55,10 @@ func (s *service) offloadToYoutubeDL(
 	errcmd := ""
 
 	metacommand := fmt.Sprintf(YT_DOWNLOAD_METADATA_ARGS, artistName, songTitle, songmeta.Date, songmeta.Url, string(songmeta.Track))
-	metacommand = strings.ReplaceAll(metacommand, htmlSingleQuoteString, "\\'")
+	//metacommand = strings.ReplaceAll(metacommand, htmlSingleQuoteString, "\\'")
 
 	downloadcommand := command + metacommand + YT_DOWNLOAD_PATH_CMD
-	downloadcommand = strings.ReplaceAll(downloadcommand, htmlSingleQuoteString, "\\'")
+	//downloadcommand = strings.ReplaceAll(downloadcommand, htmlSingleQuoteString, "\\'")
 	s.redis.UpdateStatus(RESOURCE_SONG, songmeta.SongId, STATUS_DWN_QUEUED)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", downloadcommand)
@@ -109,7 +111,11 @@ func (s *service) offloadToYoutubeDL(
 
 	// thumbnail command
 	postprocessingcmd := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
-	postprocessingcmd = strings.ReplaceAll(postprocessingcmd, htmlSingleQuoteString, "'")
+	postprocessingcmd = strings.NewReplacer(
+		htmlSingleQuoteString, "'",
+		htmlDoubleQuoteString, "\"",
+		htmlAmpersand, "&",
+	).Replace(postprocessingcmd)
 	return asyncReturn{
 		query:             query,
 		meta:              songmeta,
