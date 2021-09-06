@@ -50,9 +50,9 @@ type Service interface {
 	queuePlaylistDownloadMessenger(resource string, id string, songmetas []SongMeta, path *string) error
 
 	// core services
-	SongDownload(id string, path *string) (*SongMeta, error)
-	PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error)
-	PlaylistSync(resource string, id string, path *string) ([]SongMeta, error)
+	SongDownload(id string, format string, path *string) (*SongMeta, error)
+	PlaylistDownload(resource string, id string, format string, path *string) ([]SongMeta, error)
+	PlaylistSync(resource string, id string, format string, path *string) ([]SongMeta, error)
 
 	// status tracking
 	CheckSongStatus(id string) (string, error)
@@ -212,6 +212,7 @@ func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) e
 		uint32(*songmeta.Duration),
 		uint32(*songmeta.Track),
 		songmeta.Title,
+		songmeta.Format,
 	)
 	_, err := s.feedMetaTransporter.SendSongMeta(data)
 	if err != nil {
@@ -223,7 +224,6 @@ func (s *service) queueSongDownloadMessenger(songmeta *SongMeta, path *string) e
 func (s *service) queuePlaylistDownloadMessenger(resource string, id string, songmetas []SongMeta, path *string) error {
 	metas := s.feedMetaTransporter.NewPlaylistTransportStruct()
 	for _, songmeta := range songmetas {
-
 		data := s.feedMetaTransporter.NewSongMetaTransportStruct(
 			songmeta.Url,
 			songmeta.SongID,
@@ -237,6 +237,7 @@ func (s *service) queuePlaylistDownloadMessenger(resource string, id string, son
 			uint32(*songmeta.Duration),
 			uint32(*songmeta.Track),
 			songmeta.Title,
+			songmeta.Format,
 		)
 		metas.Songs = append(metas.Songs, *data)
 	}
@@ -253,18 +254,22 @@ func (s *service) queuePlaylistDownloadMessenger(resource string, id string, son
 }
 
 // core services
-func (s *service) SongDownload(id string, path *string) (*SongMeta, error) {
+func (s *service) SongDownload(id string, format string, path *string) (*SongMeta, error) {
 	songmeta, err := s.FetchSongMeta(id)
 	if err != nil {
 		return songmeta, err
 	}
+	songmeta.Format = format
 	// if error occurs while saving to redis, it is handled by the global async error handler
 	s.redis.SaveMeta(songmeta, STATUS_META_FED)
 	return songmeta, s.queueSongDownloadMessenger(songmeta, path)
 }
 
-func (s *service) PlaylistDownload(resource string, id string, path *string) ([]SongMeta, error) {
+func (s *service) PlaylistDownload(resource string, id string, format string, path *string) ([]SongMeta, error) {
 	songmetas, err := s.FetchPlaylistMeta(resource, id)
+	for i := range songmetas {
+		songmetas[i].Format = format
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +277,7 @@ func (s *service) PlaylistDownload(resource string, id string, path *string) ([]
 	return songmetas, s.queuePlaylistDownloadMessenger(resource, id, songmetas, path)
 }
 
-func (s *service) PlaylistSync(resource string, id string, path *string) ([]SongMeta, error) {
+func (s *service) PlaylistSync(resource string, id string, format string, path *string) ([]SongMeta, error) {
 	var (
 		metaCh  = make(chan *PlaylistPayload, 1)
 		songMap = make(chan map[string]SongMeta)
@@ -302,11 +307,12 @@ func (s *service) PlaylistSync(resource string, id string, path *string) ([]Song
 	downloaded := <-songMap
 	toBeQueuedSongs := []SongMeta{}
 	all := <-metaCh
-	for _, v := range all.SongMetas {
+	for i, v := range all.SongMetas {
 		if _, ok := downloaded[v.SongID]; ok {
 			continue
 		}
-		toBeQueuedSongs = append(toBeQueuedSongs, v)
+		all.SongMetas[i].Format = format
+		toBeQueuedSongs = append(toBeQueuedSongs, all.SongMetas[i])
 	}
 	log.Printf("total songs: %v; alredy downloaded: %v", len(all.SongMetas), len(downloaded))
 	return toBeQueuedSongs, s.queuePlaylistDownloadMessenger(resource, id, toBeQueuedSongs, path)

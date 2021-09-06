@@ -32,6 +32,7 @@ type songMetaStruct struct {
 	Bitrate    uint32
 	Track      uint32
 	Title      string
+	Format     string
 }
 
 func Register() (*grpc.ClientConn, FeedMetaClient, error) {

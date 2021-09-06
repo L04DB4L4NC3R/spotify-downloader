@@ -22,7 +22,7 @@ const (
 	YT_DOWNLOAD_PATH_CMD = " -o \"music/%(title)s.%(ext)s\""
 
 	// image url, song path, download path, title, song path
-	FFMPEG_THUMBNAIL_CMD = "ffmpeg -y -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s -(%s)-(%s).mp3\" && rm \"%s\""
+	FFMPEG_THUMBNAIL_CMD = "ffmpeg -y -i %s -i \"%s\" -map_metadata 1 -map 1 -map 0 \"%s/%s -(%s)-(%s).%s\" && rm \"%s\""
 
 	RESOURCE_PLAYLIST = "playlists"
 	RESOURCE_SONG     = "tracks"

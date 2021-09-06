@@ -26,7 +26,7 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 	query := fmt.Sprintf("%s - %s", req.Title, html.EscapeString(req.ArtistName))
 
 	go func() {
-		thumbscmd := s.offloadToYoutubeDL(ctx, "mp3", query, req)
+		thumbscmd := s.offloadToYoutubeDL(ctx, query, req)
 		s.ApplyThumbnails(ctx, []string{thumbscmd.postprocessingcmd}, []*pb.SongMetaRequest{req})
 		s.redis.UpdateStatus(RESOURCE_SONG, req.SongId, STATUS_FINISHED)
 	}()
@@ -39,14 +39,13 @@ func (s *service) SongDownload(ctx context.Context, req *pb.SongMetaRequest) (*p
 
 func (s *service) offloadToYoutubeDL(
 	nctx context.Context,
-	format string,
 	query string,
 	songmeta *pb.SongMetaRequest,
 ) asyncReturn {
 	ctx, cancel := context.WithTimeout(context.Background(), SONG_DOWNLOAD_TIMEOUT)
 	defer cancel()
 
-	command := fmt.Sprintf(YT_DOWNLOAD_CMD, format, query)
+	command := fmt.Sprintf(YT_DOWNLOAD_CMD, songmeta.Format, query)
 
 	artistName := html.EscapeString(songmeta.ArtistName)
 	songTitle := html.EscapeString(songmeta.Title)
@@ -110,7 +109,7 @@ func (s *service) offloadToYoutubeDL(
 	dwpath = dwpath[:len(dwpath)-1]
 
 	// thumbnail command
-	postprocessingcmd := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, dwpath)
+	postprocessingcmd := fmt.Sprintf(FFMPEG_THUMBNAIL_CMD, songmeta.Thumbnail, dwpath, "music", songTitle, artistName, albumName, songmeta.Format, dwpath)
 	postprocessingcmd = strings.NewReplacer(
 		htmlSingleQuoteString, "'",
 		htmlDoubleQuoteString, "\"",

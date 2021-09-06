@@ -15,6 +15,7 @@ type SongMeta struct {
 	YtUrl      string `json:"yt_url"`
 	SongID     string `json:"song_id"`
 	Thumbnail  string `json:"thumbnail"`
+	Format     string `json:"format"`
 }
 
 type SpotifyPlaylistUnmarshalStruct struct {

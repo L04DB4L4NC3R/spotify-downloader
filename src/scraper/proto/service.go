@@ -12,7 +12,10 @@ type service struct {
 type Service interface {
 	SendSongMeta(*songMetaStruct) (ytlink string, err error)
 	SendPlaylistMeta(playlistTransportStruct) (ytlinks []string, err error)
-	NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32, title string) *songMetaStruct
+	NewSongMetaTransportStruct(
+		url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string,
+		duration, track uint32, title, format string,
+	) *songMetaStruct
 	NewPlaylistTransportStruct() playlistTransportStruct
 }
 
@@ -22,7 +25,10 @@ func NewService(mtc FeedMetaClient) Service {
 	}
 }
 
-func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string, duration, track uint32, title string) *songMetaStruct {
+func (svc *service) NewSongMetaTransportStruct(
+	url, songId, thumbnail, genre, date, albumUrl, albumName, artistLink, artistName string,
+	duration, track uint32, title, format string,
+) *songMetaStruct {
 	return &songMetaStruct{
 		Url:        url,
 		SongId:     songId,
@@ -36,6 +42,7 @@ func (svc *service) NewSongMetaTransportStruct(url, songId, thumbnail, genre, da
 		Duration:   duration,
 		Track:      track,
 		Title:      title,
+		Format:     format,
 	}
 }
 
@@ -57,6 +64,7 @@ func (svc *service) SendSongMeta(meta *songMetaStruct) (ytlink string, err error
 		Duration:   meta.Duration,
 		Track:      meta.Track,
 		Title:      meta.Title,
+		Format:     meta.Format,
 	}
 	res, err := svc.feedMetaTransporter.SongDownload(context.Background(), req)
 	if err != nil {
@@ -87,6 +95,7 @@ func (svc *service) SendPlaylistMeta(metas playlistTransportStruct) ([]string, e
 			Duration:   meta.Duration,
 			Track:      meta.Track,
 			Title:      meta.Title,
+			Format:     meta.Format,
 		}
 		requests = append(requests, req)
 	}

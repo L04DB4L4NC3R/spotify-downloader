@@ -117,7 +117,7 @@ func (s *service) offloadBatchToYoutubeDL(ctx context.Context, slice []*pb.SongM
 	for _, v := range slice {
 		go func(v *pb.SongMetaRequest) {
 			query := fmt.Sprintf("%s - %s", v.Title, v.ArtistName)
-			fetchChan <- s.offloadToYoutubeDL(ctx, "mp3", query, v)
+			fetchChan <- s.offloadToYoutubeDL(ctx, query, v)
 		}(v)
 	}
 

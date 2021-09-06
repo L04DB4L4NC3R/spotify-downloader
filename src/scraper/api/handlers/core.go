@@ -2,11 +2,17 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/api/views"
 	"github.com/L04DB4L4NC3R/spotify-downloader/scraper/pkg/core"
 	"github.com/gorilla/mux"
+)
+
+var (
+	errInvalidInput = errors.New("invalid input")
 )
 
 type handler struct {
@@ -126,7 +132,12 @@ func (h *handler) PlayPauseSong() http.Handler {
 func (h *handler) SyncPlaylist() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, err := h.service.PlaylistSync(core.RESOURCE_PLAYLIST, vars["id"], nil)
+		id, format, err := h.parseIdFormat(vars["id"])
+		if err != nil {
+			views.Fill(w, "bad input", err, http.StatusBadRequest)
+			return
+		}
+		playlistmetas, err := h.service.PlaylistSync(core.RESOURCE_PLAYLIST, id, format, nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
@@ -140,7 +151,12 @@ func (h *handler) SyncPlaylist() http.Handler {
 func (h *handler) DownloadPlaylist() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_PLAYLIST, vars["id"], nil)
+		id, format, err := h.parseIdFormat(vars["id"])
+		if err != nil {
+			views.Fill(w, "bad input", err, http.StatusBadRequest)
+			return
+		}
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_PLAYLIST, id, format, nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
@@ -154,7 +170,12 @@ func (h *handler) DownloadPlaylist() http.Handler {
 func (h *handler) DownloadAlbum() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_ALBUM, vars["id"], nil)
+		id, format, err := h.parseIdFormat(vars["id"])
+		if err != nil {
+			views.Fill(w, "bad input", err, http.StatusBadRequest)
+			return
+		}
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_ALBUM, id, format, nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
@@ -168,7 +189,12 @@ func (h *handler) DownloadAlbum() http.Handler {
 func (h *handler) DownloadShow() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_SHOW, vars["id"], nil)
+		id, format, err := h.parseIdFormat(vars["id"])
+		if err != nil {
+			views.Fill(w, "bad input", err, http.StatusBadRequest)
+			return
+		}
+		playlistmetas, err := h.service.PlaylistDownload(core.RESOURCE_SHOW, id, format, nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err.Error(), http.StatusInternalServerError)
 			return
@@ -181,8 +207,15 @@ func (h *handler) DownloadShow() http.Handler {
 
 func (h *handler) DownloadSong() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		songMeta, err := h.service.SongDownload(vars["id"], nil)
+		var (
+			vars = mux.Vars(r)
+		)
+		id, format, err := h.parseIdFormat(vars["id"])
+		if err != nil {
+			views.Fill(w, "invalid requst", err, http.StatusBadRequest)
+			return
+		}
+		songMeta, err := h.service.SongDownload(id, format, nil)
 		if err != nil {
 			views.Fill(w, "Some error occurred", err, http.StatusInternalServerError)
 			return
@@ -229,5 +262,29 @@ func NewHandler(r *mux.Router, svc core.Service) Handler {
 	return &handler{
 		router:  r,
 		service: svc,
+	}
+}
+
+func (h *handler) parseIdFormat(payload string) (id, format string, err error) {
+	idString := strings.Split(payload, ".")
+	n := len(idString)
+	switch n {
+	case 0:
+		return "", "", err
+	case 1:
+		id = idString[0]
+		format = "mp3"
+		return id, format, nil
+	case 2:
+		id = idString[0]
+		switch idString[1] {
+		case "mp3", "flac", "opus":
+			format = idString[1]
+			return id, format, nil
+		default:
+			return "", "", errInvalidInput
+		}
+	default:
+		return "", "", errInvalidInput
 	}
 }

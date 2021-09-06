@@ -18,6 +18,7 @@ message SongMetaRequest {
 	uint32 bitrate = 11;
 	uint32 track = 12;
 	string title = 13;
+	string format = 14;
 }
 
 message SongMetaResponse {
