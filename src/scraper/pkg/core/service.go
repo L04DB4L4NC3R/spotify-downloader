@@ -307,6 +307,7 @@ func (s *service) PlaylistSync(resource string, id string, format string, path *
 	downloaded := <-songMap
 	toBeQueuedSongs := []SongMeta{}
 	all := <-metaCh
+	s.redis.SaveMetaArray(resource, id, all.SongMetas, STATUS_META_FED)
 	for i, v := range all.SongMetas {
 		if _, ok := downloaded[v.SongID]; ok {
 			continue
